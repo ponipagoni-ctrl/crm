@@ -51,21 +51,16 @@ let importParsed = null; // {headers, rows, mapping}
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
-function load() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      state = JSON.parse(raw);
-      state.campaigns = state.campaigns || [];
-      state.activeCampaign = state.activeCampaign || null;
-      return;
-    }
-  } catch (e) { console.warn('load failed', e); }
-  seed();
-  state.campaigns = [];
-  state.activeCampaign = null;
+function applyLoadedState(loaded) {
+  if (loaded && Array.isArray(loaded.clients)) {
+    state = loaded;
+  } else {
+    seed();
+  }
+  state.campaigns = state.campaigns || [];
+  state.activeCampaign = state.activeCampaign || null;
 }
-function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function save() { Auth.persist(state); }
 
 /* ---------------- seed (реальные предстоящие заказы Влада из Notion) ---------------- */
 function seed() {
@@ -1415,8 +1410,14 @@ function confirmIcsImport() {
 
 /* ---------------- init ---------------- */
 function init() {
-  load();
+  Auth.begin(loaded => {
+    applyLoadedState(loaded);
+    bindEvents();
+    showView('dashboard');
+  });
+}
 
+function bindEvents() {
   // навигация
   document.querySelectorAll('.nav-item, .tab-item[data-view]').forEach(b =>
     b.addEventListener('click', () => showView(b.dataset.view)));
@@ -1487,15 +1488,45 @@ function init() {
     if (!confirm('Удалить ВСЕ данные CRM? Это действие нельзя отменить.')) return;
     if (!confirm('Точно удалить? Рекомендуем сначала скачать копию (JSON).')) return;
     localStorage.removeItem(STORE_KEY);
-    state = { clients: [], deals: [], seeded: true };
+    state = { clients: [], deals: [], seeded: true, campaigns: [], activeCampaign: null };
     save(); render();
     toast('Все данные удалены');
   });
 
+  // доступ
+  document.getElementById('btn-lock').addEventListener('click', () => Auth.logout());
+  document.getElementById('btn-change-pass').addEventListener('click', openChangePassword);
+
   // Esc закрывает модалку
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+}
 
-  showView('dashboard');
+function openChangePassword() {
+  openModal(`
+  <div class="modal-head"><h2>🔐 Смена пароля</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <div class="form-grid">
+    <div class="field"><label>Текущий пароль</label><input id="cp-old" type="password" autocomplete="current-password"></div>
+    <div class="field"><label>Новый пароль</label><input id="cp-new" type="password" minlength="4" autocomplete="new-password"></div>
+    <div class="field"><label>Новый пароль ещё раз</label><input id="cp-new2" type="password" minlength="4" autocomplete="new-password"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeModal()">Отмена</button>
+    <button class="btn btn-primary" id="cp-save">Сменить</button>
+  </div>`);
+  document.getElementById('cp-save').addEventListener('click', async () => {
+    const oldP = document.getElementById('cp-old').value;
+    const n1 = document.getElementById('cp-new').value;
+    const n2 = document.getElementById('cp-new2').value;
+    if (n1.length < 4) { toast('Пароль слишком короткий', 'error'); return; }
+    if (n1 !== n2) { toast('Новые пароли не совпадают', 'error'); return; }
+    try {
+      await Auth.changePassword(oldP, n1);
+      closeModal();
+      toast('Пароль изменён ✅', 'success');
+    } catch (e) {
+      toast('Текущий пароль неверный', 'error');
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

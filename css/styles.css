@@ -291,6 +291,26 @@ input,select,textarea{font:inherit;color:inherit}
 .toast.success{background:#166534}
 .toast.error{background:#991b1b}
 
+/* Lock screen */
+.lock-overlay{
+  position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#181b2e 0%,#312e81 100%);padding:20px;
+}
+.lock-card{
+  background:var(--card);border-radius:22px;padding:34px 28px;width:100%;max-width:380px;
+  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:slideUp .25s ease;
+}
+.lock-logo{font-size:52px;margin-bottom:6px}
+.lock-card h1{font-size:22px;margin-bottom:6px}
+.lock-sub{color:var(--muted);font-size:14px;margin-bottom:18px;line-height:1.5}
+.lock-card .form-grid{text-align:left}
+.lock-error{
+  background:#fee2e2;color:#b91c1c;border-radius:10px;padding:9px 12px;font-size:13.5px;
+  margin-bottom:14px;font-weight:600;
+}
+.lock-reset{margin-top:16px;font-size:13px;color:var(--muted);text-decoration:underline}
+.lock-reset:hover{color:var(--danger)}
+
 /* Tabbar (mobile) */
 .tabbar{display:none}
 
