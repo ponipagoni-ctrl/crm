@@ -27,6 +27,21 @@ const OPEN_STAGES = ['new', 'talk', 'prepaid', 'confirmed'];
 
 const SOURCES = ['Авито', 'ВКонтакте', 'Сарафанное радио', 'Рассылка', 'Повторный клиент', 'Instagram', 'Telegram', 'Другое'];
 
+const MAIL_PRESETS = [
+  {
+    name: '🎂 Скоро праздник',
+    text: 'Здравствуйте, {имя}! Это Влад — приезжал к вам с праздником 🎉 Заметил, что скоро {праздник} ({дата}). Могу снова сделать день незабываемым: ростовые куклы, пенная вечеринка, сладкая вата. Для постоянных клиентов — приятная цена. Забронировать дату?',
+  },
+  {
+    name: '🎅 Новый год',
+    text: 'Здравствуйте, {имя}! 🎄 Открыл запись на визиты Деда Мороза и Снегурочки на Новый год. Настоящие костюмы, живая программа — дети в восторге. Лучшие даты (30–31 декабря) разбирают уже сейчас. Успеть забронировать?',
+  },
+  {
+    name: '💦 Лето: пена и вата',
+    text: 'Здравствуйте, {имя}! ☀️ Лето — время пенных вечеринок! Бочка пены, музыка, ведущий — праздник для двора, дачи или лагеря. Плюс сладкая вата для детей. Есть свободные даты в этом месяце. Интересно?',
+  },
+];
+
 /* ---------------- state ---------------- */
 let state = { clients: [], deals: [], seeded: false };
 let currentView = 'dashboard';
@@ -39,9 +54,16 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { state = JSON.parse(raw); return; }
+    if (raw) {
+      state = JSON.parse(raw);
+      state.campaigns = state.campaigns || [];
+      state.activeCampaign = state.activeCampaign || null;
+      return;
+    }
   } catch (e) { console.warn('load failed', e); }
   seed();
+  state.campaigns = [];
+  state.activeCampaign = null;
 }
 function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
 
@@ -171,7 +193,7 @@ function toast(msg, type = '') {
 /* ---------------- routing ---------------- */
 const VIEW_TITLES = {
   dashboard: 'Главная', clients: 'Клиенты', deals: 'Сделки',
-  calendar: 'Календарь', settings: 'Настройки',
+  calendar: 'Календарь', mailing: 'Рассылка', settings: 'Настройки',
 };
 function showView(name) {
   currentView = name;
@@ -189,6 +211,7 @@ function render() {
   if (currentView === 'clients') renderClients();
   if (currentView === 'deals') renderKanban();
   if (currentView === 'calendar') renderCalendar();
+  if (currentView === 'mailing') renderMailing();
   if (currentView === 'settings') renderSettings();
 }
 
@@ -881,10 +904,27 @@ function importJSON(file) {
     try {
       const data = JSON.parse(reader.result);
       if (!Array.isArray(data.clients) || !Array.isArray(data.deals)) throw new Error('bad format');
-      if (!confirm(`Заменить текущие данные? В файле: ${data.clients.length} клиентов, ${data.deals.length} сделок.`)) return;
-      state = data;
-      save(); render();
-      toast('Данные восстановлены ✅', 'success');
+      openModal(`
+      <div class="modal-head"><h2>Импорт данных</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <p>В файле: <b>${data.clients.length}</b> клиентов, <b>${data.deals.length}</b> сделок.<br>
+      Сейчас в CRM: ${state.clients.length} клиентов, ${state.deals.length} сделок.</p>
+      <div class="btn-row" style="flex-direction:column;margin-top:14px">
+        <button class="btn btn-primary" style="justify-content:center;padding:13px" id="imp-merge">➕ Объединить — добавить новых, без дублей (рекомендуется)</button>
+        <button class="btn" style="justify-content:center;padding:13px" id="imp-replace">♻️ Заменить всё содержимое CRM данными из файла</button>
+      </div>`);
+      document.getElementById('imp-merge').addEventListener('click', () => {
+        const res = mergeData(data);
+        closeModal(); render();
+        toast(`Объединено: +${res.addedClients} клиентов, +${res.addedDeals} сделок ✅`, 'success');
+      });
+      document.getElementById('imp-replace').addEventListener('click', () => {
+        if (!confirm('Точно заменить ВСЁ? Текущие данные будут удалены.')) return;
+        state = data;
+        state.campaigns = state.campaigns || [];
+        state.activeCampaign = state.activeCampaign || null;
+        save(); closeModal(); render();
+        toast('Данные восстановлены ✅', 'success');
+      });
     } catch (e) {
       toast('Не удалось прочитать файл', 'error');
     }
@@ -1031,6 +1071,348 @@ function confirmImport() {
   toast(`Импорт готов: +${added} новых, ${updated} обновлено ✅`, 'success');
 }
 
+/* ================= РАССЫЛКА ================= */
+function normPhoneDigits(p) {
+  let d = String(p || '').replace(/\D/g, '');
+  if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
+  if (d.length === 10 && d[0] === '9') d = '7' + d;
+  return d;
+}
+function firstName(name) {
+  const w = String(name || '').trim().split(/[\s(,]+/)[0];
+  return w || 'друг';
+}
+function ensureCampaign() {
+  if (!state.activeCampaign) {
+    state.activeCampaign = {
+      id: uid(), startedAt: Date.now(),
+      text: MAIL_PRESETS[0].text,
+      recipientIds: [], sentIds: [],
+    };
+  }
+  return state.activeCampaign;
+}
+function personalize(template, client) {
+  const nh = clientNextHoliday(client);
+  return template
+    .replace(/\{имя\}/gi, firstName(client.name))
+    .replace(/\{праздник\}/gi, nh ? nh.h.title.toLowerCase() : 'праздник')
+    .replace(/\{дата\}/gi, nh ? fmtDate(`${nh.occ.getFullYear()}-${String(nh.occ.getMonth() + 1).padStart(2, '0')}-${String(nh.occ.getDate()).padStart(2, '0')}`, false) : '');
+}
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent); }
+
+function renderMailing() {
+  const camp = ensureCampaign();
+  const withPhone = state.clients.filter(c => normPhoneDigits(c.phone).length === 11);
+
+  // 1. получатели
+  const rw = document.getElementById('mail-recipients');
+  rw.innerHTML = withPhone.length ? withPhone.map(c => {
+    const nh = clientNextHoliday(c);
+    const du = nh ? daysUntil(nh.occ) : null;
+    const checked = camp.recipientIds.includes(c.id);
+    return `
+    <label class="list-item" style="cursor:pointer">
+      <input type="checkbox" class="mail-check" data-id="${c.id}" ${checked ? 'checked' : ''}>
+      <div class="li-body">
+        <div class="li-title">${esc(c.name)}</div>
+        <div class="li-sub">${esc(c.phone)}${nh ? ' · 🎂 ' + esc(nh.h.title) : ''}</div>
+      </div>
+      <div class="li-right">${du !== null ? daysBadge(du) : ''}</div>
+    </label>`;
+  }).join('') : '<div class="list-empty">Нет клиентов с телефонами. Добавьте телефоны клиентам или импортируйте базу.</div>';
+  document.getElementById('mail-count-hint').textContent =
+    `выбрано ${camp.recipientIds.length} из ${withPhone.length}`;
+
+  rw.querySelectorAll('.mail-check').forEach(cb => cb.addEventListener('change', () => {
+    const id = cb.dataset.id;
+    if (cb.checked) { if (!camp.recipientIds.includes(id)) camp.recipientIds.push(id); }
+    else camp.recipientIds = camp.recipientIds.filter(x => x !== id);
+    save(); renderMailing();
+  }));
+
+  // 2. шаблоны
+  const pw = document.getElementById('mail-presets');
+  pw.innerHTML = MAIL_PRESETS.map((p, i) =>
+    `<button class="btn btn-sm" data-preset="${i}">${p.name}</button>`).join('');
+  pw.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    camp.text = MAIL_PRESETS[Number(b.dataset.preset)].text;
+    document.getElementById('mail-text').value = camp.text;
+    save(); renderMailSendList();
+  }));
+  const ta = document.getElementById('mail-text');
+  if (ta.value !== camp.text) ta.value = camp.text;
+  ta.oninput = () => { camp.text = ta.value; save(); renderMailSendList(); };
+
+  renderMailSendList();
+  renderMailHistory();
+}
+
+function renderMailSendList() {
+  const camp = ensureCampaign();
+  const wrap = document.getElementById('mail-send-list');
+  const recipients = camp.recipientIds.map(getClient).filter(Boolean);
+  if (!recipients.length) {
+    wrap.innerHTML = '<div class="list-empty">Отметьте получателей в списке выше.</div>';
+    return;
+  }
+  wrap.innerHTML = recipients.map(c => {
+    const msg = personalize(camp.text, c);
+    const digits = normPhoneDigits(c.phone);
+    const wa = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
+    const sms = `sms:+${digits}${isIOS() ? '&' : '?'}body=${encodeURIComponent(msg)}`;
+    const sent = camp.sentIds.includes(c.id);
+    return `
+    <div class="list-item" style="cursor:default;${sent ? 'opacity:.55' : ''}">
+      <div class="li-emoji">${sent ? '✅' : '✉️'}</div>
+      <div class="li-body">
+        <div class="li-title">${esc(c.name)}</div>
+        <div class="li-sub" title="${esc(msg)}">${esc(msg.slice(0, 70))}…</div>
+      </div>
+      <div class="li-right btn-row" style="flex-wrap:nowrap">
+        <a class="btn btn-sm btn-primary" href="${wa}" target="_blank" rel="noopener" onclick="markSent('${c.id}')">WhatsApp</a>
+        <a class="btn btn-sm" href="${sms}" onclick="markSent('${c.id}')">SMS</a>
+      </div>
+    </div>`;
+  }).join('');
+  const sentCount = camp.sentIds.filter(id => camp.recipientIds.includes(id)).length;
+  document.getElementById('mail-finish').textContent =
+    `🏁 Завершить рассылку (отправлено ${sentCount} из ${camp.recipientIds.length})`;
+}
+
+function markSent(clientId) {
+  const camp = ensureCampaign();
+  if (!camp.sentIds.includes(clientId)) camp.sentIds.push(clientId);
+  const c = getClient(clientId);
+  if (c) c.lastMailedAt = todayStr();
+  save();
+  setTimeout(renderMailSendList, 300);
+}
+
+function finishCampaign() {
+  const camp = state.activeCampaign;
+  if (!camp || !camp.sentIds.length) { toast('Ещё никому не отправлено', 'error'); return; }
+  state.campaigns.unshift({
+    id: camp.id, date: todayStr(), text: camp.text,
+    total: camp.recipientIds.length, sent: camp.sentIds.length,
+  });
+  state.activeCampaign = null;
+  save(); renderMailing();
+  toast('Рассылка сохранена в историю ✅', 'success');
+}
+
+function renderMailHistory() {
+  const wrap = document.getElementById('mail-history');
+  wrap.innerHTML = (state.campaigns || []).length ? state.campaigns.map(c => `
+    <div class="list-item" style="cursor:default">
+      <div class="li-emoji">📮</div>
+      <div class="li-body">
+        <div class="li-title">${fmtDate(c.date)} — отправлено ${c.sent} из ${c.total}</div>
+        <div class="li-sub">${esc(c.text.slice(0, 80))}…</div>
+      </div>
+    </div>`).join('') : '<div class="list-empty">Рассылок пока не было.</div>';
+}
+
+/* ================= ОБЪЕДИНЕНИЕ ДАННЫХ (merge) ================= */
+function mergeData(incoming) {
+  const res = { addedClients: 0, updatedClients: 0, addedDeals: 0, updatedDeals: 0 };
+  const idMap = {}; // id клиента из файла → id в базе
+
+  for (const inc of (incoming.clients || [])) {
+    const incPhone = normPhoneDigits(inc.phone);
+    let existing = incPhone.length === 11
+      ? state.clients.find(c => normPhoneDigits(c.phone) === incPhone)
+      : null;
+    if (!existing) {
+      existing = state.clients.find(c =>
+        c.name.trim().toLowerCase() === String(inc.name || '').trim().toLowerCase());
+    }
+    if (existing) {
+      if (inc.phone && !existing.phone) existing.phone = inc.phone;
+      if (inc.address && !existing.address) existing.address = inc.address;
+      if (inc.source && !existing.source) existing.source = inc.source;
+      if (inc.notes && !(existing.notes || '').includes(inc.notes)) {
+        existing.notes = existing.notes ? existing.notes + '\n' + inc.notes : inc.notes;
+      }
+      for (const t of (inc.tags || [])) {
+        existing.tags = existing.tags || [];
+        if (!existing.tags.includes(t)) existing.tags.push(t);
+      }
+      for (const h of (inc.holidays || [])) {
+        existing.holidays = existing.holidays || [];
+        const hd = (h.date || '').slice(5); // месяц-день
+        if (!existing.holidays.some(x => (x.date || '').slice(5) === hd)) {
+          existing.holidays.push({ ...h, id: uid() });
+        }
+      }
+      idMap[inc.id] = existing.id;
+      res.updatedClients++;
+    } else {
+      const copy = { ...inc, id: uid(), createdAt: inc.createdAt || Date.now() };
+      copy.holidays = (inc.holidays || []).map(h => ({ ...h, id: uid() }));
+      state.clients.push(copy);
+      idMap[inc.id] = copy.id;
+      res.addedClients++;
+    }
+  }
+
+  for (const inc of (incoming.deals || [])) {
+    let existing = inc.icsUid ? state.deals.find(d => d.icsUid === inc.icsUid) : null;
+    if (!existing && inc.date) {
+      existing = state.deals.find(d => d.date === inc.date && d.service === inc.service && !d.icsUid);
+    }
+    if (existing) {
+      if (inc.icsUid) existing.icsUid = inc.icsUid;
+      if (inc.amount && !existing.amount) existing.amount = inc.amount;
+      if (inc.prepaid && !existing.prepaid) existing.prepaid = inc.prepaid;
+      if (inc.address && !existing.address) existing.address = inc.address;
+      if (inc.time && !existing.time) existing.time = inc.time;
+      if (!existing.clientId && inc.clientId && idMap[inc.clientId]) existing.clientId = idMap[inc.clientId];
+      res.updatedDeals++;
+    } else {
+      state.deals.push({
+        ...inc, id: uid(),
+        clientId: inc.clientId ? (idMap[inc.clientId] || null) : null,
+        createdAt: inc.createdAt || Date.now(),
+      });
+      res.addedDeals++;
+    }
+  }
+  save();
+  return res;
+}
+
+/* ================= ИМПОРТ .ICS (Google Календарь) ================= */
+function unfoldICS(text) {
+  return text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
+}
+function icsProp(block, name) {
+  const re = new RegExp('^' + name + '[^:\\n]*:(.*)$', 'mi');
+  const m = block.match(re);
+  return m ? m[1].replace(/\\n/g, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').trim() : '';
+}
+function icsDate(block) {
+  const m = block.match(/^DTSTART[^:\n]*:(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/mi);
+  if (!m) return null;
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, time: m[4] ? `${m[4]}:${m[5]}` : '' };
+}
+
+let icsParsed = null;
+
+function handleIcsFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = unfoldICS(String(reader.result));
+      const blocks = text.split('BEGIN:VEVENT').slice(1).map(b => b.split('END:VEVENT')[0]);
+      const seenUids = new Set(state.deals.map(d => d.icsUid).filter(Boolean));
+      const rows = [];
+      for (const b of blocks) {
+        const summary = icsProp(b, 'SUMMARY');
+        if (!summary) continue;
+        const dt = icsDate(b);
+        if (!dt) continue;
+        const uidStr = icsProp(b, 'UID') || (dt.date + summary.slice(0, 20));
+        if (seenUids.has(uidStr)) continue; // уже импортирован
+        const parsed = OrderParser.parseOrderSummary(summary);
+        if (!parsed.hasServiceKeyword && !parsed.phone && !parsed.price) continue; // не заказ
+        rows.push({
+          uid: uidStr, summary, location: icsProp(b, 'LOCATION'),
+          date: dt.date, time: dt.time, parsed,
+          checked: parsed.hasServiceKeyword || (!!parsed.phone && parsed.price > 0),
+        });
+      }
+      rows.sort((a, b) => a.date.localeCompare(b.date));
+      if (!rows.length) { toast('Новых заказов в файле не найдено', 'error'); return; }
+      icsParsed = { rows, fileName: file.name };
+      renderIcsPreview();
+    } catch (e) {
+      console.error(e);
+      toast('Не удалось прочитать файл календаря', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderIcsPreview() {
+  const wrap = document.getElementById('ics-preview');
+  if (!icsParsed) { wrap.innerHTML = ''; return; }
+  const rows = icsParsed.rows;
+  wrap.innerHTML = `
+    <p style="margin:12px 0 4px"><b>${esc(icsParsed.fileName)}</b> — найдено похожих на заказы: ${rows.length}. Снимите галочки с лишних:</p>
+    <div class="import-table-wrap"><table class="import-table">
+      <tr><th></th><th>Дата</th><th>Заказ</th><th>Услуга</th><th>Цена</th><th>Клиент</th><th>Телефон</th></tr>
+      ${rows.map((r, i) => {
+        const s = SERVICES[r.parsed.service] || SERVICES.other;
+        return `<tr>
+          <td><input type="checkbox" data-ics-row="${i}" ${r.checked ? 'checked' : ''}></td>
+          <td>${fmtDate(r.date)}</td>
+          <td title="${esc(r.summary)}">${esc(r.parsed.title.slice(0, 38))}</td>
+          <td>${s.emoji} ${s.name}</td>
+          <td>${r.parsed.price ? fmtMoney(r.parsed.price) : '—'}</td>
+          <td>${esc(r.parsed.name || '—')}</td>
+          <td>${esc(r.parsed.phone || '—')}</td>
+        </tr>`;
+      }).join('')}
+    </table></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="confirmIcsImport()">✅ Импортировать отмеченные</button>
+      <button class="btn" onclick="icsParsed=null;renderIcsPreview()">Отмена</button>
+    </div>`;
+  wrap.querySelectorAll('[data-ics-row]').forEach(cb => cb.addEventListener('change', () => {
+    icsParsed.rows[Number(cb.dataset.icsRow)].checked = cb.checked;
+  }));
+}
+
+function buildFromCalendarRow(r, clientsAcc, clientKeyMap) {
+  const p = r.parsed;
+  const today = todayStr();
+  let clientId = null;
+  if (p.phone || p.name) {
+    const key = p.phone ? normPhoneDigits(p.phone) : 'name:' + p.name.toLowerCase();
+    if (clientKeyMap[key]) clientId = clientKeyMap[key];
+    else {
+      const holidays = [];
+      if (p.occasion) {
+        holidays.push({ id: uid(), title: p.occasion.title, date: r.date, yearly: true });
+      } else if (p.service === 'dm') {
+        holidays.push({ id: uid(), title: 'Новый год (заказ ДМ+СГ)', date: r.date, yearly: true });
+      }
+      const client = {
+        id: uid(), type: 'person',
+        name: p.name || ('Клиент ' + p.phone),
+        phone: p.phone, address: r.location || '',
+        source: 'Google Календарь', notes: p.occasion ? `Возраст на празднике: ${p.occasion.age}` : '',
+        tags: [], holidays, createdAt: Date.now(),
+      };
+      clientsAcc.push(client);
+      clientKeyMap[key] = client.id;
+      clientId = client.id;
+    }
+  }
+  return {
+    id: uid(), icsUid: r.uid, clientId,
+    service: p.service, title: p.title,
+    date: r.date, time: r.time,
+    amount: p.price, prepaid: p.prepaid,
+    address: r.location || '', note: r.summary === p.title ? '' : r.summary,
+    stage: r.date < today ? 'done' : 'confirmed',
+    createdAt: Date.now(),
+  };
+}
+
+function confirmIcsImport() {
+  if (!icsParsed) return;
+  const selected = icsParsed.rows.filter(r => r.checked);
+  if (!selected.length) { toast('Ничего не отмечено', 'error'); return; }
+  const clients = [], deals = [], keyMap = {};
+  for (const r of selected) deals.push(buildFromCalendarRow(r, clients, keyMap));
+  const res = mergeData({ clients, deals });
+  icsParsed = null;
+  render(); renderIcsPreview();
+  toast(`Календарь загружен: +${res.addedDeals} заказов, +${res.addedClients} клиентов ✅`, 'success');
+}
+
 /* ---------------- init ---------------- */
 function init() {
   load();
@@ -1039,6 +1421,31 @@ function init() {
   document.querySelectorAll('.nav-item, .tab-item[data-view]').forEach(b =>
     b.addEventListener('click', () => showView(b.dataset.view)));
   document.getElementById('btn-settings-mobile').addEventListener('click', () => showView('settings'));
+  document.getElementById('btn-mailing-mobile').addEventListener('click', () => showView('mailing'));
+
+  // рассылка
+  document.querySelectorAll('[data-mailfilter]').forEach(b => b.addEventListener('click', () => {
+    const camp = ensureCampaign();
+    const mode = b.dataset.mailfilter;
+    const withPhone = state.clients.filter(c => normPhoneDigits(c.phone).length === 11);
+    if (mode === 'all') camp.recipientIds = withPhone.map(c => c.id);
+    else if (mode === 'none') camp.recipientIds = [];
+    else {
+      const days = mode === 'holiday30' ? 30 : 60;
+      camp.recipientIds = withPhone.filter(c => {
+        const nh = clientNextHoliday(c);
+        return nh && daysUntil(nh.occ) <= days;
+      }).map(c => c.id);
+    }
+    save(); renderMailing();
+  }));
+  document.getElementById('mail-finish').addEventListener('click', finishCampaign);
+
+  // импорт календаря
+  document.getElementById('import-ics').addEventListener('change', e => {
+    if (e.target.files[0]) handleIcsFile(e.target.files[0]);
+    e.target.value = '';
+  });
 
   // быстрое добавление
   document.getElementById('btn-quick-add').addEventListener('click', openQuickAdd);

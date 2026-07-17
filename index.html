@@ -26,6 +26,7 @@
       <button class="nav-item" data-view="clients"><span class="nav-ico">👥</span><span>Клиенты</span><span class="nav-badge" id="badge-clients"></span></button>
       <button class="nav-item" data-view="deals"><span class="nav-ico">💼</span><span>Сделки</span><span class="nav-badge" id="badge-deals"></span></button>
       <button class="nav-item" data-view="calendar"><span class="nav-ico">📅</span><span>Календарь</span></button>
+      <button class="nav-item" data-view="mailing"><span class="nav-ico">✉️</span><span>Рассылка</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span>Настройки</span></button>
     </nav>
     <div class="sidebar-footer">
@@ -39,6 +40,7 @@
       <h1 class="topbar-title" id="topbar-title">Главная</h1>
       <div class="topbar-actions">
         <button class="btn btn-ghost" id="btn-global-search" title="Поиск">🔍</button>
+        <button class="btn btn-ghost only-mobile" id="btn-mailing-mobile" title="Рассылка">✉️</button>
         <button class="btn btn-ghost only-mobile" id="btn-settings-mobile" title="Настройки">⚙️</button>
         <button class="btn btn-primary" id="btn-quick-add">＋ Добавить</button>
       </div>
@@ -123,8 +125,49 @@
       </div>
     </section>
 
+    <!-- Mailing -->
+    <section class="view" id="view-mailing">
+      <div class="card">
+        <div class="card-head"><h2>1️⃣ Кому отправляем</h2><span class="card-hint" id="mail-count-hint"></span></div>
+        <div class="btn-row" style="margin-bottom:10px">
+          <button class="btn btn-sm" data-mailfilter="all">Все с телефоном</button>
+          <button class="btn btn-sm" data-mailfilter="holiday30">🎂 Праздник ≤ 30 дней</button>
+          <button class="btn btn-sm" data-mailfilter="holiday60">🎂 Праздник ≤ 60 дней</button>
+          <button class="btn btn-sm" data-mailfilter="none">Снять всех</button>
+        </div>
+        <div id="mail-recipients" class="list mail-recipients"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>2️⃣ Текст сообщения</h2></div>
+        <div class="btn-row" style="margin-bottom:10px" id="mail-presets"></div>
+        <div class="field">
+          <textarea id="mail-text" rows="5" placeholder="Здравствуйте, {имя}! …"></textarea>
+        </div>
+        <p class="muted">Подстановки: <b>{имя}</b> — имя клиента, <b>{праздник}</b> — название праздника, <b>{дата}</b> — его дата. CRM подставит их для каждого клиента автоматически.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>3️⃣ Отправка</h2><span class="card-hint">по одному тапу на клиента — WhatsApp или SMS откроются с готовым текстом</span></div>
+        <div id="mail-send-list" class="list"></div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-primary" id="mail-finish">🏁 Завершить рассылку</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>🗂 История рассылок</h2></div>
+        <div id="mail-history" class="list"></div>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section class="view" id="view-settings">
+      <div class="card">
+        <div class="card-head"><h2>📅 Импорт из Google Календаря (.ics)</h2></div>
+        <p class="muted">CRM понимает ваши записи вида «Чебурашка 4500 Виталий 8953… девочке 9»: сама определит услугу, цену, телефон, имя клиента и создаст дату праздника на следующий год.<br>
+        <b>Как получить файл:</b> Google Календарь на компьютере → ⚙️ Настройки → «Импорт и экспорт» → «Экспорт» → распакуйте скачанный архив, внутри будет файл .ics.</p>
+        <input type="file" id="import-ics" accept=".ics,text/calendar" class="hidden">
+        <button class="btn btn-primary" onclick="document.getElementById('import-ics').click()">Выбрать файл .ics</button>
+        <div id="ics-preview"></div>
+      </div>
       <div class="card">
         <div class="card-head"><h2>📥 Импорт клиентов из Excel</h2></div>
         <p class="muted">Загрузите файлы <b>Клиенты.xlsx</b>, <b>База.xlsx</b> или <b>Рассылка.xlsx</b> — колонки (имя, телефон, дата праздника, адрес, примечание) распознаются автоматически, затем вы подтвердите импорт.</p>
@@ -166,6 +209,7 @@
   <div id="toast-root"></div>
 </div>
 
+<script src="js/parse-order.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
