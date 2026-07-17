@@ -60,7 +60,10 @@ function applyLoadedState(loaded) {
   state.campaigns = state.campaigns || [];
   state.activeCampaign = state.activeCampaign || null;
 }
-function save() { Auth.persist(state); }
+function save() {
+  if (Cloud.active()) Cloud.persist(state);
+  else Auth.persist(state);
+}
 
 /* ---------------- seed (реальные предстоящие заказы Влада из Notion) ---------------- */
 function seed() {
@@ -1409,12 +1412,30 @@ function confirmIcsImport() {
 }
 
 /* ---------------- init ---------------- */
+let uiStarted = false;
+
+function startApp(loaded) {
+  applyLoadedState(loaded);
+  bindEvents();
+  uiStarted = true;
+  showView('dashboard');
+}
+
 function init() {
-  Auth.begin(loaded => {
-    applyLoadedState(loaded);
-    bindEvents();
-    showView('dashboard');
-  });
+  if (Cloud.isConfigured()) {
+    Cloud.begin({
+      onReady: startApp,
+      // изменения, пришедшие с других устройств команды
+      applyRemote: remote => {
+        state.clients = remote.clients;
+        state.deals = remote.deals;
+        state.campaigns = remote.campaigns;
+        if (uiStarted) render();
+      },
+    });
+  } else {
+    Auth.begin(startApp);
+  }
 }
 
 function bindEvents() {
@@ -1494,8 +1515,15 @@ function bindEvents() {
   });
 
   // доступ
-  document.getElementById('btn-lock').addEventListener('click', () => Auth.logout());
-  document.getElementById('btn-change-pass').addEventListener('click', openChangePassword);
+  document.getElementById('btn-lock').addEventListener('click', () =>
+    Cloud.active() ? Cloud.logout() : Auth.logout());
+  document.getElementById('btn-change-pass').addEventListener('click', () => {
+    if (Cloud.active()) {
+      Cloud.resetPassword()
+        .then(() => toast('📧 Письмо для смены пароля отправлено на ' + Cloud.userEmail(), 'success'))
+        .catch(() => toast('Не удалось отправить письмо', 'error'));
+    } else openChangePassword();
+  });
 
   // Esc закрывает модалку
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });

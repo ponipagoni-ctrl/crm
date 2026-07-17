@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Администратор CRM (тот же email, что в js/firebase-config.js)
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'ponipagoni@gmail.com';
+    }
+
+    // Одобренный сотрудник (или администратор)
+    function isApproved() {
+      return request.auth != null && (
+        isAdmin()
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true
+      );
+    }
+
+    // Анкеты пользователей: создать может любой вошедший (только со статусом
+    // «не одобрен»), одобряет/отключает — только администратор
+    match /users/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid
+            && request.resource.data.approved == false);
+      allow update, delete: if isAdmin();
+    }
+
+    // Данные CRM — только для одобренной команды
+    match /clients/{id}   { allow read, write: if isApproved(); }
+    match /deals/{id}     { allow read, write: if isApproved(); }
+    match /campaigns/{id} { allow read, write: if isApproved(); }
+    match /meta/{id}      { allow read, write: if isApproved(); }
+  }
+}
