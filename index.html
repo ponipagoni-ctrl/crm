@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<title>MakeDay CRM — праздники под контролем</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎉</text></svg>">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/xlsx.full.min.js" defer></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== Sidebar (desktop) ===== -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-emoji">🎉</span>
+      <div>
+        <div class="logo-title">MakeDay CRM</div>
+        <div class="logo-sub">агентство праздников</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard"><span class="nav-ico">📊</span><span>Главная</span></button>
+      <button class="nav-item" data-view="clients"><span class="nav-ico">👥</span><span>Клиенты</span><span class="nav-badge" id="badge-clients"></span></button>
+      <button class="nav-item" data-view="deals"><span class="nav-ico">💼</span><span>Сделки</span><span class="nav-badge" id="badge-deals"></span></button>
+      <button class="nav-item" data-view="calendar"><span class="nav-ico">📅</span><span>Календарь</span></button>
+      <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span>Настройки</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="upcoming-mini" id="sidebar-reminder"></div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <header class="topbar">
+      <h1 class="topbar-title" id="topbar-title">Главная</h1>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btn-global-search" title="Поиск">🔍</button>
+        <button class="btn btn-ghost only-mobile" id="btn-settings-mobile" title="Настройки">⚙️</button>
+        <button class="btn btn-primary" id="btn-quick-add">＋ Добавить</button>
+      </div>
+    </header>
+
+    <div class="global-search hidden" id="global-search-wrap">
+      <input type="search" id="global-search" placeholder="Поиск: имя, телефон, заметка…" autocomplete="off">
+      <div class="global-search-results" id="global-search-results"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <section class="view active" id="view-dashboard">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="dash-cols">
+        <div class="card">
+          <div class="card-head">
+            <h2>🎂 Ближайшие праздники</h2>
+            <span class="card-hint">следующие 60 дней</span>
+          </div>
+          <div id="dash-holidays" class="list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>🗓️ Ближайшие заказы</h2>
+            <span class="card-hint">подтверждённые и в работе</span>
+          </div>
+          <div id="dash-orders" class="list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>💰 Выручка по месяцам</h2><span class="card-hint">выполненные сделки</span></div>
+        <div id="dash-revenue" class="revenue-chart"></div>
+      </div>
+    </section>
+
+    <!-- Clients -->
+    <section class="view" id="view-clients">
+      <div class="toolbar">
+        <input type="search" id="clients-search" placeholder="Поиск клиента: имя, телефон, тег…" autocomplete="off">
+        <select id="clients-sort">
+          <option value="holiday">Сортировка: ближайший праздник</option>
+          <option value="name">Сортировка: по имени</option>
+          <option value="recent">Сортировка: новые сверху</option>
+          <option value="spent">Сортировка: по сумме заказов</option>
+        </select>
+      </div>
+      <div id="clients-list" class="clients-grid"></div>
+      <div class="empty hidden" id="clients-empty">
+        <div class="empty-emoji">👥</div>
+        <p>Пока нет клиентов.<br>Добавьте первого или импортируйте базу из Excel в «Настройках».</p>
+        <button class="btn btn-primary" onclick="openClientForm()">＋ Добавить клиента</button>
+      </div>
+    </section>
+
+    <!-- Deals (kanban) -->
+    <section class="view" id="view-deals">
+      <div class="toolbar">
+        <select id="deals-filter-service">
+          <option value="">Все услуги</option>
+        </select>
+        <label class="check-inline"><input type="checkbox" id="deals-show-closed"> показывать закрытые</label>
+      </div>
+      <div class="kanban" id="kanban"></div>
+    </section>
+
+    <!-- Calendar -->
+    <section class="view" id="view-calendar">
+      <div class="cal-head">
+        <button class="btn btn-ghost" id="cal-prev">‹</button>
+        <h2 id="cal-title"></h2>
+        <button class="btn btn-ghost" id="cal-next">›</button>
+        <button class="btn btn-ghost" id="cal-today">Сегодня</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span><i class="dot dot-holiday"></i> праздник клиента</span>
+        <span><i class="dot dot-deal"></i> заказ</span>
+      </div>
+      <div class="card" id="cal-day-card" style="margin-top:12px">
+        <div class="card-head"><h2 id="cal-day-title">События</h2></div>
+        <div id="cal-day-list" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="card-head"><h2>📥 Импорт клиентов из Excel</h2></div>
+        <p class="muted">Загрузите файлы <b>Клиенты.xlsx</b>, <b>База.xlsx</b> или <b>Рассылка.xlsx</b> — колонки (имя, телефон, дата праздника, адрес, примечание) распознаются автоматически, затем вы подтвердите импорт.</p>
+        <input type="file" id="import-excel" accept=".xlsx,.xls,.csv" class="hidden">
+        <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Выбрать файл Excel / CSV</button>
+        <div id="import-preview"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>💾 Резервная копия</h2></div>
+        <p class="muted">Данные хранятся в этом браузере (localStorage). Регулярно сохраняйте копию, чтобы перенести на другое устройство.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-export-json">⬇ Скачать копию (JSON)</button>
+          <button class="btn" id="btn-import-json-trigger">⬆ Восстановить из копии</button>
+          <input type="file" id="import-json" accept=".json" class="hidden">
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>📈 Статистика базы</h2></div>
+        <div id="settings-stats" class="stats-lines"></div>
+      </div>
+      <div class="card danger-card">
+        <div class="card-head"><h2>🗑 Опасная зона</h2></div>
+        <button class="btn btn-danger" id="btn-clear-all">Удалить все данные</button>
+      </div>
+      <p class="muted center">MakeDay CRM · сделано для Влада · Екатеринбург</p>
+    </section>
+  </main>
+
+  <!-- ===== Mobile bottom nav ===== -->
+  <nav class="tabbar">
+    <button class="tab-item active" data-view="dashboard"><span>📊</span>Главная</button>
+    <button class="tab-item" data-view="clients"><span>👥</span>Клиенты</button>
+    <button class="tab-item tab-add" id="tab-quick-add"><span class="tab-add-circle">＋</span></button>
+    <button class="tab-item" data-view="deals"><span>💼</span>Сделки</button>
+    <button class="tab-item" data-view="calendar"><span>📅</span>Календарь</button>
+  </nav>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
