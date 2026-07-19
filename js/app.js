@@ -409,13 +409,49 @@ function renderKanban() {
   }
   const svcFilter = svcSel.value;
   const showClosed = document.getElementById('deals-show-closed').checked;
+  const q = (document.getElementById('deals-search').value || '').toLowerCase().trim();
+  const period = document.getElementById('deals-period').value;
   const stages = showClosed ? STAGES : STAGES.filter(s => OPEN_STAGES.includes(s.id));
+
+  const now = new Date();
+  const ym = d => d ? d.slice(0, 7) : '';
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}`;
+  const m3 = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const from3m = `${m3.getFullYear()}-${String(m3.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const matchesFilters = d => {
+    if (svcFilter && d.service !== svcFilter) return false;
+    if (period === 'thisMonth' && ym(d.date) !== thisMonth) return false;
+    if (period === 'lastMonth' && ym(d.date) !== lastMonth) return false;
+    if (period === '3m' && (!d.date || d.date < from3m)) return false;
+    if (period === 'thisYear' && !(d.date || '').startsWith(String(now.getFullYear()))) return false;
+    if (period === 'ng') {
+      const m = (d.date || '').slice(5, 7);
+      if (m !== '12' && m !== '01') return false;
+    }
+    if (q) {
+      const c = getClient(d.clientId);
+      const hay = [d.title, d.address, d.note, c && c.name, c && c.phone]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  };
+
+  // сводка по отфильтрованному
+  const visible = state.deals.filter(d => matchesFilters(d) &&
+    (showClosed || OPEN_STAGES.includes(d.stage)));
+  const visSum = visible.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  document.getElementById('deals-summary').textContent =
+    `Показано сделок: ${visible.length} · на сумму ${fmtMoney(visSum)}`;
 
   const wrap = document.getElementById('kanban');
   const today = todayStr();
   wrap.innerHTML = stages.map(stage => {
     const deals = state.deals
-      .filter(d => d.stage === stage.id && (!svcFilter || d.service === svcFilter))
+      .filter(d => d.stage === stage.id && matchesFilters(d))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
     const sum = deals.reduce((s, d) => s + (Number(d.amount) || 0), 0);
     return `
@@ -1516,6 +1552,8 @@ function bindEvents() {
   // сделки
   document.getElementById('deals-filter-service').addEventListener('change', renderKanban);
   document.getElementById('deals-show-closed').addEventListener('change', renderKanban);
+  document.getElementById('deals-search').addEventListener('input', renderKanban);
+  document.getElementById('deals-period').addEventListener('change', renderKanban);
 
   // календарь
   document.getElementById('cal-prev').addEventListener('click', () => { calCursor.setMonth(calCursor.getMonth() - 1); renderCalendar(); });

@@ -101,11 +101,21 @@
     <!-- Deals (kanban) -->
     <section class="view" id="view-deals">
       <div class="toolbar">
+        <input type="search" id="deals-search" placeholder="Поиск: заказ, клиент, адрес…" autocomplete="off">
         <select id="deals-filter-service">
           <option value="">Все услуги</option>
         </select>
+        <select id="deals-period">
+          <option value="">За всё время</option>
+          <option value="thisMonth">Этот месяц</option>
+          <option value="lastMonth">Прошлый месяц</option>
+          <option value="3m">Последние 3 месяца</option>
+          <option value="thisYear">Этот год</option>
+          <option value="ng">🎄 НГ-сезоны (дек–янв)</option>
+        </select>
         <label class="check-inline"><input type="checkbox" id="deals-show-closed"> показывать закрытые</label>
       </div>
+      <div class="muted" id="deals-summary" style="margin-bottom:10px"></div>
       <div class="kanban" id="kanban"></div>
     </section>
 
