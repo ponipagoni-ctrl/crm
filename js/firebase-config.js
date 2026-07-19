@@ -9,17 +9,14 @@
    Project settings → General → Your apps → SDK setup → Config.
    ============================================================ */
 
-window.FIREBASE_CONFIG = null;
-/* Пример заполнения:
 window.FIREBASE_CONFIG = {
-  apiKey: "AIza…",
+  apiKey: "AIzaSyDPjkBJNawCeR_M1iDN8OD3v_fo3cRWu84",
   authDomain: "makeday-crm.firebaseapp.com",
   projectId: "makeday-crm",
-  storageBucket: "makeday-crm.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  storageBucket: "makeday-crm.firebasestorage.app",
+  messagingSenderId: "945188988680",
+  appId: "1:945188988680:web:2c8f311eeb8eb3d8e16ebd"
 };
-*/
 
 // Администратор CRM: одобряет сотрудников, управляет командой
 window.CRM_ADMIN_EMAIL = 'ponipagoni@gmail.com';
