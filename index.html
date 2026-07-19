@@ -80,6 +80,9 @@
     <section class="view" id="view-clients">
       <div class="toolbar">
         <input type="search" id="clients-search" placeholder="Поиск клиента: имя, телефон, тег…" autocomplete="off">
+        <select id="clients-service">
+          <option value="">Заказывали: любую услугу</option>
+        </select>
         <select id="clients-sort">
           <option value="holiday">Сортировка: ближайший праздник</option>
           <option value="name">Сортировка: по имени</option>
@@ -129,11 +132,18 @@
     <section class="view" id="view-mailing">
       <div class="card">
         <div class="card-head"><h2>1️⃣ Кому отправляем</h2><span class="card-hint" id="mail-count-hint"></span></div>
-        <div class="btn-row" style="margin-bottom:10px">
+        <div class="btn-row" style="margin-bottom:6px">
           <button class="btn btn-sm" data-mailfilter="all">Все с телефоном</button>
           <button class="btn btn-sm" data-mailfilter="holiday30">🎂 Праздник ≤ 30 дней</button>
           <button class="btn btn-sm" data-mailfilter="holiday60">🎂 Праздник ≤ 60 дней</button>
           <button class="btn btn-sm" data-mailfilter="none">Снять всех</button>
+        </div>
+        <div class="btn-row" style="margin-bottom:10px">
+          <span class="muted" style="align-self:center">Заказывали:</span>
+          <button class="btn btn-sm" data-mailservice="doll">🐻 Кукол</button>
+          <button class="btn btn-sm" data-mailservice="foam">💦 Пену</button>
+          <button class="btn btn-sm" data-mailservice="dm">🎅 ДМ+СГ</button>
+          <button class="btn btn-sm" data-mailservice="cotton">🍬 Вату</button>
         </div>
         <div id="mail-recipients" class="list mail-recipients"></div>
       </div>

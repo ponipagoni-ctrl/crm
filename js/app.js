@@ -333,12 +333,23 @@ function renderRevenueChart() {
     </div>`).join('');
 }
 
+/* услуги, которые клиент заказывал (по его сделкам, кроме отменённых) */
+function clientServices(clientId) {
+  const set = new Set();
+  for (const d of state.deals) {
+    if (d.clientId === clientId && d.stage !== 'cancelled') set.add(d.service);
+  }
+  return set;
+}
+
 /* ---------------- clients ---------------- */
 function renderClients() {
   const q = (document.getElementById('clients-search').value || '').toLowerCase().trim();
   const sort = document.getElementById('clients-sort').value;
+  const svc = document.getElementById('clients-service').value;
   let list = state.clients.slice();
 
+  if (svc) list = list.filter(c => clientServices(c.id).has(svc));
   if (q) {
     list = list.filter(c =>
       c.name.toLowerCase().includes(q) ||
@@ -364,6 +375,8 @@ function renderClients() {
   wrap.innerHTML = list.map(c => {
     const nh = clientNextHoliday(c);
     const spent = clientSpent(c.id);
+    const svcBadges = [...clientServices(c.id)]
+      .map(s => (SERVICES[s] || SERVICES.other).emoji).join(' ');
     let holidayHtml = '';
     if (nh) {
       const du = daysUntil(nh.occ);
@@ -376,7 +389,7 @@ function renderClients() {
       <div class="cc-top">
         <div class="cc-avatar">${esc(initials(c.name))}</div>
         <div>
-          <div class="cc-name">${esc(c.name)}</div>
+          <div class="cc-name">${esc(c.name)} ${svcBadges ? `<span title="что заказывал">${svcBadges}</span>` : ''}</div>
           <div class="cc-phone">${esc(c.phone || 'телефон не указан')}</div>
         </div>
       </div>
@@ -1462,6 +1475,17 @@ function bindEvents() {
     save(); renderMailing();
   }));
   document.getElementById('mail-finish').addEventListener('click', finishCampaign);
+  // рассылка по услуге («заказывали пену» и т.п.)
+  document.querySelectorAll('[data-mailservice]').forEach(b => b.addEventListener('click', () => {
+    const camp = ensureCampaign();
+    const svc = b.dataset.mailservice;
+    camp.recipientIds = state.clients
+      .filter(c => normPhoneDigits(c.phone).length === 11 && clientServices(c.id).has(svc))
+      .map(c => c.id);
+    save(); renderMailing();
+    const s = SERVICES[svc];
+    toast(`Выбраны клиенты: ${s.emoji} ${s.name} — ${camp.recipientIds.length} чел.`);
+  }));
 
   // импорт календаря
   document.getElementById('import-ics').addEventListener('change', e => {
@@ -1484,6 +1508,10 @@ function bindEvents() {
   // клиенты
   document.getElementById('clients-search').addEventListener('input', renderClients);
   document.getElementById('clients-sort').addEventListener('change', renderClients);
+  const svcSelect = document.getElementById('clients-service');
+  svcSelect.innerHTML = '<option value="">Заказывали: любую услугу</option>' +
+    Object.entries(SERVICES).map(([k, s]) => `<option value="${k}">Заказывали: ${s.emoji} ${s.name}</option>`).join('');
+  svcSelect.addEventListener('change', renderClients);
 
   // сделки
   document.getElementById('deals-filter-service').addEventListener('change', renderKanban);
