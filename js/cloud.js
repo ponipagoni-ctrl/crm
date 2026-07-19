@@ -268,6 +268,8 @@ const Cloud = (() => {
       firebase.initializeApp(window.FIREBASE_CONFIG);
       auth = firebase.auth();
       db = firebase.firestore();
+      // автоопределение long-polling — надёжнее на мобильных и «капризных» сетях
+      try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch {}
       try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch {}
 
       auth.onAuthStateChanged(async user => {
