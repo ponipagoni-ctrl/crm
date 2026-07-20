@@ -191,7 +191,7 @@ function toast(msg, type = '') {
 /* ---------------- routing ---------------- */
 const VIEW_TITLES = {
   dashboard: 'Главная', clients: 'Клиенты', deals: 'Сделки',
-  calendar: 'Календарь', mailing: 'Рассылка', settings: 'Настройки',
+  calendar: 'Календарь', stats: 'Статистика', mailing: 'Рассылка', settings: 'Настройки',
 };
 function showView(name) {
   currentView = name;
@@ -209,6 +209,7 @@ function render() {
   if (currentView === 'clients') renderClients();
   if (currentView === 'deals') renderKanban();
   if (currentView === 'calendar') renderCalendar();
+  if (currentView === 'stats') renderStats();
   if (currentView === 'mailing') renderMailing();
   if (currentView === 'settings') renderSettings();
 }
@@ -444,8 +445,10 @@ function renderKanban() {
   const visible = state.deals.filter(d => matchesFilters(d) &&
     (showClosed || OPEN_STAGES.includes(d.stage)));
   const visSum = visible.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  const visStaff = visible.reduce((s, d) => s + (Number(d.staffPay) || 0), 0);
   document.getElementById('deals-summary').textContent =
-    `Показано сделок: ${visible.length} · на сумму ${fmtMoney(visSum)}`;
+    `Показано сделок: ${visible.length} · на сумму ${fmtMoney(visSum)}` +
+    (visStaff ? ` · сотрудникам ${fmtMoney(visStaff)} · чистыми ${fmtMoney(visSum - visStaff)}` : '');
 
   const wrap = document.getElementById('kanban');
   const today = todayStr();
@@ -482,6 +485,7 @@ function dealCardHtml(d, stageId, today) {
     <div class="dc-meta">
       ${c ? `<span>👤 ${esc(c.name)}</span>` : ''}
       ${d.address ? `<span>📍 ${esc(d.address)}</span>` : ''}
+      ${d.staffName ? `<span>🧑‍💼 ${esc(d.staffName)}${Number(d.staffPay) ? ` — ${fmtMoney(d.staffPay)}` : ''}</span>` : ''}
     </div>
     <div class="dc-row">
       <span class="dc-money">${fmtMoney(d.amount)}${Number(d.prepaid) ? ` <small style="color:var(--muted);font-weight:400">(аванс ${fmtMoney(d.prepaid)})</small>` : ''}</span>
@@ -704,7 +708,7 @@ function openClientForm(id = null) {
     <button class="btn btn-primary" onclick="saveClientForm('${c ? c.id : ''}')">Сохранить</button>
   </div>`);
   if (!(c?.holidays || []).length) addHolidayRow();
-  setTimeout(() => document.getElementById('cf-name').focus(), 50);
+  setTimeout(() => { const el = document.getElementById('cf-name'); if (el) el.focus(); }, 50);
 }
 
 function addHolidayRow() {
@@ -809,6 +813,15 @@ function openClientDetail(id) {
   </div>`);
 }
 
+/* имена сотрудников, встречавшиеся в сделках (для подсказок) */
+function staffNames() {
+  const set = new Set();
+  for (const d of state.deals) {
+    if (d.staffName) String(d.staffName).split(',').forEach(s => { s = s.trim(); if (s) set.add(s); });
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
 /* --------- deal form --------- */
 function openDealForm(id = null, presetClientId = null) {
   const d = id ? state.deals.find(x => x.id === id) : null;
@@ -851,6 +864,13 @@ function openDealForm(id = null, presetClientId = null) {
       <div class="field"><label>Предоплата, ₽</label>
         <input id="df-prepaid" type="number" inputmode="numeric" placeholder="1000" value="${d?.prepaid || ''}"></div>
     </div>
+    <div class="form-row">
+      <div class="field"><label>Кто работал (сотрудник)</label>
+        <input id="df-staff" type="text" list="staff-list" placeholder="Ксюша" value="${esc(d?.staffName || '')}">
+        <datalist id="staff-list">${staffNames().map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
+      <div class="field"><label>Выплата сотруднику, ₽</label>
+        <input id="df-staffpay" type="number" inputmode="numeric" placeholder="2000" value="${d?.staffPay || ''}"></div>
+    </div>
     <div class="field"><label>Адрес</label>
       <input id="df-address" type="text" placeholder="ул. Умельцев, 9" value="${esc(d?.address || '')}"></div>
     <div class="field"><label>Заметка</label>
@@ -861,7 +881,7 @@ function openDealForm(id = null, presetClientId = null) {
     <button class="btn" onclick="closeModal()">Отмена</button>
     <button class="btn btn-primary" onclick="saveDealForm('${d ? d.id : ''}')">Сохранить</button>
   </div>`);
-  setTimeout(() => document.getElementById('df-title').focus(), 50);
+  setTimeout(() => { const el = document.getElementById('df-title'); if (el) el.focus(); }, 50);
 }
 
 function saveDealForm(id) {
@@ -876,6 +896,8 @@ function saveDealForm(id) {
     time: document.getElementById('df-time').value,
     amount: Number(document.getElementById('df-amount').value) || 0,
     prepaid: Number(document.getElementById('df-prepaid').value) || 0,
+    staffName: document.getElementById('df-staff').value.trim(),
+    staffPay: Number(document.getElementById('df-staffpay').value) || 0,
     address: document.getElementById('df-address').value.trim(),
     note: document.getElementById('df-note').value.trim(),
   };
@@ -1116,6 +1138,96 @@ function confirmImport() {
   importParsed = null;
   save(); render(); renderImportPreview();
   toast(`Импорт готов: +${added} новых, ${updated} обновлено ✅`, 'success');
+}
+
+/* ================= СТАТИСТИКА ================= */
+const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+function fillStatsFilters() {
+  const yearSel = document.getElementById('stats-year');
+  if (yearSel.dataset.filled) return;
+  yearSel.dataset.filled = '1';
+  const years = [...new Set(state.deals.map(d => (d.date || '').slice(0, 4)).filter(y => y.length === 4))]
+    .sort().reverse();
+  yearSel.innerHTML = '<option value="">Все годы</option>' +
+    years.map(y => `<option value="${y}">${y}</option>`).join('');
+  document.getElementById('stats-month').innerHTML = '<option value="">Все месяцы</option>' +
+    MONTHS_RU.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+  document.getElementById('stats-service').innerHTML = '<option value="">Все услуги</option>' +
+    Object.entries(SERVICES).map(([k, s]) => `<option value="${k}">${s.emoji} ${s.name}</option>`).join('');
+}
+
+function renderStats() {
+  fillStatsFilters();
+  const year = document.getElementById('stats-year').value;
+  const month = document.getElementById('stats-month').value;
+  const svc = document.getElementById('stats-service').value;
+
+  const rows = state.deals.filter(d =>
+    d.stage === 'done' && d.date &&
+    (!year || d.date.startsWith(year)) &&
+    (!month || d.date.slice(5, 7) === month) &&
+    (!svc || d.service === svc));
+
+  const gross = rows.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  const staff = rows.reduce((s, d) => s + (Number(d.staffPay) || 0), 0);
+  document.getElementById('stats-tiles').innerHTML = `
+    <div class="kpi"><div class="kpi-num">${fmtMoney(gross)}</div><div class="kpi-label">выручка (выполнено)</div></div>
+    <div class="kpi warn"><div class="kpi-num">${staff ? '−' + fmtMoney(staff) : '0 ₽'}</div><div class="kpi-label">выплачено сотрудникам</div></div>
+    <div class="kpi"><div class="kpi-num" style="color:var(--success)">${fmtMoney(gross - staff)}</div><div class="kpi-label">чистыми вам</div></div>
+    <div class="kpi"><div class="kpi-num">${rows.length}</div><div class="kpi-label">сделок выполнено</div></div>`;
+
+  // по месяцам
+  const byMonth = {};
+  for (const d of rows) {
+    const key = d.date.slice(0, 7);
+    byMonth[key] = byMonth[key] || { gross: 0, staff: 0, count: 0 };
+    byMonth[key].gross += Number(d.amount) || 0;
+    byMonth[key].staff += Number(d.staffPay) || 0;
+    byMonth[key].count++;
+  }
+  const monthKeys = Object.keys(byMonth).sort().reverse();
+  document.getElementById('stats-months').innerHTML =
+    '<tr><th>Месяц</th><th>Сделок</th><th>Выручка</th><th>Сотрудникам</th><th>Чистыми</th></tr>' +
+    (monthKeys.map(k => {
+      const m = byMonth[k];
+      const label = MONTHS_RU[Number(k.slice(5, 7)) - 1] + ' ' + k.slice(0, 4);
+      return `<tr><td><b>${label}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
+        <td>${m.staff ? '−' + fmtMoney(m.staff) : '—'}</td><td><b>${fmtMoney(m.gross - m.staff)}</b></td></tr>`;
+    }).join('') || '<tr><td colspan="5">Нет выполненных сделок за выбранный период.</td></tr>');
+
+  // по услугам
+  const bySvc = {};
+  for (const d of rows) {
+    bySvc[d.service] = bySvc[d.service] || { gross: 0, staff: 0, count: 0 };
+    bySvc[d.service].gross += Number(d.amount) || 0;
+    bySvc[d.service].staff += Number(d.staffPay) || 0;
+    bySvc[d.service].count++;
+  }
+  document.getElementById('stats-services').innerHTML =
+    '<tr><th>Услуга</th><th>Сделок</th><th>Выручка</th><th>Сотрудникам</th><th>Чистыми</th></tr>' +
+    (Object.entries(bySvc).sort((a, b) => b[1].gross - a[1].gross).map(([k, m]) => {
+      const s = SERVICES[k] || SERVICES.other;
+      return `<tr><td><b>${s.emoji} ${s.name}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
+        <td>${m.staff ? '−' + fmtMoney(m.staff) : '—'}</td><td><b>${fmtMoney(m.gross - m.staff)}</b></td></tr>`;
+    }).join('') || '<tr><td colspan="5">Нет данных.</td></tr>');
+
+  // по сотрудникам
+  const byStaff = {};
+  for (const d of rows) {
+    if (!d.staffName) continue;
+    const key = String(d.staffName).trim();
+    if (!key) continue;
+    byStaff[key] = byStaff[key] || { pay: 0, count: 0 };
+    byStaff[key].pay += Number(d.staffPay) || 0;
+    byStaff[key].count++;
+  }
+  document.getElementById('stats-staff').innerHTML =
+    '<tr><th>Сотрудник</th><th>Заказов</th><th>Выплачено</th></tr>' +
+    (Object.entries(byStaff).sort((a, b) => b[1].pay - a[1].pay).map(([nm, m]) =>
+      `<tr><td><b>${esc(nm)}</b></td><td>${m.count}</td><td>${fmtMoney(m.pay)}</td></tr>`).join('')
+      || '<tr><td colspan="3">Пока ни в одной сделке не указан сотрудник. Откройте сделку и заполните поля «Кто работал» и «Выплата сотруднику».</td></tr>');
 }
 
 /* ================= РАССЫЛКА ================= */
@@ -1493,6 +1605,11 @@ function bindEvents() {
     b.addEventListener('click', () => showView(b.dataset.view)));
   document.getElementById('btn-settings-mobile').addEventListener('click', () => showView('settings'));
   document.getElementById('btn-mailing-mobile').addEventListener('click', () => showView('mailing'));
+  document.getElementById('btn-stats-mobile').addEventListener('click', () => showView('stats'));
+
+  // статистика
+  ['stats-year', 'stats-month', 'stats-service'].forEach(id =>
+    document.getElementById(id).addEventListener('change', renderStats));
 
   // рассылка
   document.querySelectorAll('[data-mailfilter]').forEach(b => b.addEventListener('click', () => {

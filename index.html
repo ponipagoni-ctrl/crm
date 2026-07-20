@@ -26,6 +26,7 @@
       <button class="nav-item" data-view="clients"><span class="nav-ico">👥</span><span>Клиенты</span><span class="nav-badge" id="badge-clients"></span></button>
       <button class="nav-item" data-view="deals"><span class="nav-ico">💼</span><span>Сделки</span><span class="nav-badge" id="badge-deals"></span></button>
       <button class="nav-item" data-view="calendar"><span class="nav-ico">📅</span><span>Календарь</span></button>
+      <button class="nav-item" data-view="stats"><span class="nav-ico">📊</span><span>Статистика</span></button>
       <button class="nav-item" data-view="mailing"><span class="nav-ico">✉️</span><span>Рассылка</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span>Настройки</span></button>
     </nav>
@@ -40,6 +41,7 @@
       <h1 class="topbar-title" id="topbar-title">Главная</h1>
       <div class="topbar-actions">
         <button class="btn btn-ghost" id="btn-global-search" title="Поиск">🔍</button>
+        <button class="btn btn-ghost only-mobile" id="btn-stats-mobile" title="Статистика">📊</button>
         <button class="btn btn-ghost only-mobile" id="btn-mailing-mobile" title="Рассылка">✉️</button>
         <button class="btn btn-ghost only-mobile" id="btn-settings-mobile" title="Настройки">⚙️</button>
         <button class="btn btn-primary" id="btn-quick-add">＋ Добавить</button>
@@ -135,6 +137,28 @@
       <div class="card" id="cal-day-card" style="margin-top:12px">
         <div class="card-head"><h2 id="cal-day-title">События</h2></div>
         <div id="cal-day-list" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="view" id="view-stats">
+      <div class="toolbar">
+        <select id="stats-year"></select>
+        <select id="stats-month"></select>
+        <select id="stats-service"></select>
+      </div>
+      <div class="kpi-grid" id="stats-tiles"></div>
+      <div class="card">
+        <div class="card-head"><h2>📅 По месяцам</h2><span class="card-hint">только выполненные сделки</span></div>
+        <div class="import-table-wrap"><table class="import-table" id="stats-months"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>🎭 По услугам</h2><span class="card-hint">за выбранный период</span></div>
+        <div class="import-table-wrap"><table class="import-table" id="stats-services"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>🧑‍💼 По сотрудникам</h2><span class="card-hint">выплаты из сделок за выбранный период</span></div>
+        <div class="import-table-wrap"><table class="import-table" id="stats-staff"></table></div>
       </div>
     </section>
 
