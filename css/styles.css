@@ -276,6 +276,14 @@ input,select,textarea{font:inherit;color:inherit}
 .detail-section{margin-top:14px}
 .detail-section h3{font-size:13.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 
+/* Stats: раскрывающиеся строки */
+.stats-row{cursor:pointer}
+.stats-row:hover td{background:var(--primary-light)}
+.stats-row .arr{display:inline-block;margin-right:7px;color:var(--muted);transition:transform .15s}
+.stats-row.open .arr{transform:rotate(90deg)}
+.stats-details td{background:#fbfbfd;white-space:normal}
+.stats-details .list-item{padding:8px 6px}
+
 /* Mailing */
 .mail-recipients{max-height:320px;overflow-y:auto}
 .mail-recipients .list-item input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--primary)}

@@ -1143,6 +1143,33 @@ function confirmImport() {
 /* ================= СТАТИСТИКА ================= */
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+let statsFiltered = [];
+
+function toggleStatsDetails(tr, deals) {
+  const table = tr.closest('table');
+  const next = tr.nextElementSibling;
+  const wasOpen = next && next.classList.contains('stats-details');
+  table.querySelectorAll('.stats-details').forEach(x => x.remove());
+  table.querySelectorAll('.stats-row.open').forEach(x => x.classList.remove('open'));
+  if (wasOpen) return;
+  tr.classList.add('open');
+  const det = document.createElement('tr');
+  det.className = 'stats-details';
+  const items = deals.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(d => {
+    const c = getClient(d.clientId);
+    const s = SERVICES[d.service] || SERVICES.other;
+    return `<div class="list-item" onclick="openDealForm('${d.id}')">
+      <div class="li-emoji">${s.emoji}</div>
+      <div class="li-body">
+        <div class="li-title">${esc(d.title || s.name)}</div>
+        <div class="li-sub">${fmtDate(d.date)}${d.time ? ' ' + esc(d.time) : ''}${c ? ' · ' + esc(c.name) : ''}${Number(d.staffPay) ? ' · 🧑‍💼 −' + fmtMoney(d.staffPay) : ''}</div>
+      </div>
+      <div class="li-right"><div class="li-money">${fmtMoney(d.amount)}</div></div>
+    </div>`;
+  }).join('');
+  det.innerHTML = `<td colspan="5"><div class="list">${items || '<div class="list-empty">Пусто.</div>'}</div></td>`;
+  tr.after(det);
+}
 
 function fillStatsFilters() {
   const yearSel = document.getElementById('stats-year');
@@ -1187,13 +1214,14 @@ function renderStats() {
     byMonth[key].staff += Number(d.staffPay) || 0;
     byMonth[key].count++;
   }
+  statsFiltered = rows;
   const monthKeys = Object.keys(byMonth).sort().reverse();
   document.getElementById('stats-months').innerHTML =
     '<tr><th>Месяц</th><th>Сделок</th><th>Выручка</th><th>Сотрудникам</th><th>Чистыми</th></tr>' +
     (monthKeys.map(k => {
       const m = byMonth[k];
       const label = MONTHS_RU[Number(k.slice(5, 7)) - 1] + ' ' + k.slice(0, 4);
-      return `<tr><td><b>${label}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
+      return `<tr class="stats-row" data-mkey="${k}"><td><span class="arr">▸</span><b>${label}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
         <td>${m.staff ? '−' + fmtMoney(m.staff) : '—'}</td><td><b>${fmtMoney(m.gross - m.staff)}</b></td></tr>`;
     }).join('') || '<tr><td colspan="5">Нет выполненных сделок за выбранный период.</td></tr>');
 
@@ -1209,9 +1237,17 @@ function renderStats() {
     '<tr><th>Услуга</th><th>Сделок</th><th>Выручка</th><th>Сотрудникам</th><th>Чистыми</th></tr>' +
     (Object.entries(bySvc).sort((a, b) => b[1].gross - a[1].gross).map(([k, m]) => {
       const s = SERVICES[k] || SERVICES.other;
-      return `<tr><td><b>${s.emoji} ${s.name}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
+      return `<tr class="stats-row" data-skey="${k}"><td><span class="arr">▸</span><b>${s.emoji} ${s.name}</b></td><td>${m.count}</td><td>${fmtMoney(m.gross)}</td>
         <td>${m.staff ? '−' + fmtMoney(m.staff) : '—'}</td><td><b>${fmtMoney(m.gross - m.staff)}</b></td></tr>`;
     }).join('') || '<tr><td colspan="5">Нет данных.</td></tr>');
+
+  // клик по строке — развернуть список сделок этой строки (с учётом фильтров)
+  document.querySelectorAll('#stats-months .stats-row').forEach(tr =>
+    tr.addEventListener('click', () =>
+      toggleStatsDetails(tr, statsFiltered.filter(d => d.date.startsWith(tr.dataset.mkey)))));
+  document.querySelectorAll('#stats-services .stats-row').forEach(tr =>
+    tr.addEventListener('click', () =>
+      toggleStatsDetails(tr, statsFiltered.filter(d => d.service === tr.dataset.skey))));
 
   // по сотрудникам
   const byStaff = {};
