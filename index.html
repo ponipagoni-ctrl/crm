@@ -27,6 +27,7 @@
       <button class="nav-item" data-view="deals"><span class="nav-ico">💼</span><span>Сделки</span><span class="nav-badge" id="badge-deals"></span></button>
       <button class="nav-item" data-view="calendar"><span class="nav-ico">📅</span><span>Календарь</span></button>
       <button class="nav-item" data-view="stats"><span class="nav-ico">📊</span><span>Статистика</span></button>
+      <button class="nav-item" data-view="repeat"><span class="nav-ico">🔁</span><span>Повторные</span><span class="nav-badge" id="badge-repeat"></span></button>
       <button class="nav-item" data-view="mailing"><span class="nav-ico">✉️</span><span>Рассылка</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span>Настройки</span></button>
     </nav>
@@ -41,6 +42,7 @@
       <h1 class="topbar-title" id="topbar-title">Главная</h1>
       <div class="topbar-actions">
         <button class="btn btn-ghost" id="btn-global-search" title="Поиск">🔍</button>
+        <button class="btn btn-ghost only-mobile" id="btn-repeat-mobile" title="Повторные продажи">🔁</button>
         <button class="btn btn-ghost only-mobile" id="btn-stats-mobile" title="Статистика">📊</button>
         <button class="btn btn-ghost only-mobile" id="btn-mailing-mobile" title="Рассылка">✉️</button>
         <button class="btn btn-ghost only-mobile" id="btn-settings-mobile" title="Настройки">⚙️</button>
@@ -159,6 +161,23 @@
       <div class="card">
         <div class="card-head"><h2>🧑‍💼 По сотрудникам</h2><span class="card-hint">выплаты из сделок за выбранный период</span></div>
         <div class="import-table-wrap"><table class="import-table" id="stats-staff"></table></div>
+      </div>
+    </section>
+
+    <!-- Repeat sales -->
+    <section class="view" id="view-repeat">
+      <div class="card" style="background:linear-gradient(135deg,#eef2ff,#faf5ff);border:1px solid #e0e7ff">
+        <div class="card-head"><h2>🔁 Повторные продажи</h2></div>
+        <p class="muted" style="margin:0">CRM сама находит клиентов, которым пора предложить заказ снова: у кого скоро праздник, кто заказывал Деда Мороза в прошлые годы или давно не обращался. Напишите им в один тап — повторный клиент дешевле нового.</p>
+      </div>
+      <div id="repeat-metric" class="kpi-grid"></div>
+      <div class="toolbar">
+        <div class="btn-row" id="repeat-filters"></div>
+      </div>
+      <div id="repeat-list" class="list"></div>
+      <div class="card" id="repeat-done-card" style="margin-top:14px">
+        <div class="card-head"><h2>🗂 Обработанные</h2><span class="card-hint">кому уже написали / кто отказался</span></div>
+        <div id="repeat-done" class="list"></div>
       </div>
     </section>
 

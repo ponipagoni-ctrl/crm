@@ -191,7 +191,8 @@ function toast(msg, type = '') {
 /* ---------------- routing ---------------- */
 const VIEW_TITLES = {
   dashboard: 'Главная', clients: 'Клиенты', deals: 'Сделки',
-  calendar: 'Календарь', stats: 'Статистика', mailing: 'Рассылка', settings: 'Настройки',
+  calendar: 'Календарь', stats: 'Статистика', repeat: 'Повторные продажи',
+  mailing: 'Рассылка', settings: 'Настройки',
 };
 function showView(name) {
   currentView = name;
@@ -210,6 +211,7 @@ function render() {
   if (currentView === 'deals') renderKanban();
   if (currentView === 'calendar') renderCalendar();
   if (currentView === 'stats') renderStats();
+  if (currentView === 'repeat') renderRepeat();
   if (currentView === 'mailing') renderMailing();
   if (currentView === 'settings') renderSettings();
 }
@@ -218,6 +220,8 @@ function renderBadges() {
   document.getElementById('badge-clients').textContent = state.clients.length || '';
   const open = state.deals.filter(d => OPEN_STAGES.includes(d.stage)).length;
   document.getElementById('badge-deals').textContent = open || '';
+  const rb = document.getElementById('badge-repeat');
+  if (rb) { const n = repeatOpportunities().length; rb.textContent = n || ''; }
   // мини-напоминание в сайдбаре
   const upcoming = upcomingHolidays(14);
   const el = document.getElementById('sidebar-reminder');
@@ -1273,6 +1277,316 @@ function normPhoneDigits(p) {
   if (d.length === 10 && d[0] === '9') d = '7' + d;
   return d;
 }
+
+/* ---- кнопки мессенджеров (WhatsApp / Telegram / MAX) ----
+   Ссылки открывают приложение, установленное на УСТРОЙСТВЕ сотрудника,
+   поэтому сообщение всегда уходит с его личного аккаунта — общих нет. */
+function msgButtonsHtml(phone, text, mark) {
+  const digits = normPhoneDigits(phone);
+  const enc = encodeURIComponent(text);
+  let b64 = '';
+  try { b64 = btoa(unescape(encodeURIComponent(text))); } catch (e) { b64 = ''; }
+  const dm = `data-mark-type="${mark.type}" data-cid="${esc(mark.cid)}"` + (mark.key ? ` data-key="${esc(mark.key)}"` : '');
+  return `
+    <a class="btn btn-sm btn-primary msg-btn" data-mtype="wa" ${dm}
+       href="https://wa.me/${digits}?text=${enc}" target="_blank" rel="noopener">🟢 WhatsApp</a>
+    <a class="btn btn-sm msg-btn" data-mtype="tg" data-copy="${b64}" ${dm}
+       href="tg://resolve?phone=${digits}">🔵 Telegram</a>
+    <a class="btn btn-sm msg-btn" data-mtype="max" data-copy="${b64}" ${dm}
+       href="https://max.ru/" target="_blank" rel="noopener">🟣 MAX</a>`;
+}
+/* один общий обработчик на все кнопки мессенджеров */
+function handleMsgButtonClick(e) {
+  const a = e.target.closest('.msg-btn');
+  if (!a) return;
+  // Telegram/MAX не умеют подставлять текст по ссылке — копируем в буфер
+  if (a.dataset.copy && navigator.clipboard) {
+    try {
+      const txt = decodeURIComponent(escape(atob(a.dataset.copy)));
+      navigator.clipboard.writeText(txt).then(() =>
+        toast('✅ Текст скопирован — вставьте в чат (Ctrl/⌘+V)')).catch(() => {});
+    } catch (err) {}
+  }
+  const mt = a.dataset.markType, cid = a.dataset.cid, key = a.dataset.key;
+  setTimeout(() => {
+    if (mt === 'repeat') { setRepeatStatus(cid, key, 'written'); if (currentView === 'repeat') renderRepeat(); }
+    else if (mt === 'mail') { markSent(cid); }
+  }, 350);
+}
+
+/* ================= ПОВТОРНЫЕ ПРОДАЖИ ================= */
+const REPEAT_BDAY_DAYS = 21;   // за сколько дней до ДР ребёнка напоминать
+const REPEAT_LATER_SNOOZE = 7; // «напомнить позже» — через сколько дней вернуть в список
+
+/* имена детей из заметок: «Дети: Мирон 8, Тима 5» / «Миша 8 (футбол)» → «Мирон и Тима» */
+function childNames(notes) {
+  const t = String(notes || '');
+  const names = [];
+  const re = /([А-ЯЁ][а-яё]{2,})\s*\d{1,2}/g;
+  let m;
+  while ((m = re.exec(t)) !== null) names.push(m[1]);
+  const uniq = [...new Set(names)].slice(0, 3);
+  if (!uniq.length) return '';
+  if (uniq.length === 1) return uniq[0];
+  return uniq.slice(0, -1).join(', ') + ' и ' + uniq.slice(-1);
+}
+
+/* последняя услуга клиента (по выполненным сделкам) */
+function clientLastDoneDeal(clientId) {
+  return clientDeals(clientId)
+    .filter(d => d.stage === 'done' && d.date)
+    .sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+}
+/* есть ли у клиента будущий/открытый заказ — тогда допродавать не нужно */
+function clientHasFutureDeal(clientId) {
+  const today = todayStr();
+  return state.deals.some(d => d.clientId === clientId &&
+    OPEN_STAGES.includes(d.stage) && (!d.date || d.date >= today));
+}
+function repeatGet(client, key) {
+  return (client.repeat && client.repeat[key]) || null;
+}
+function isSellingSeasonNY() {
+  const m = new Date().getMonth() + 1; // ноябрь–декабрь
+  return m === 11 || m === 12;
+}
+
+/* Вычислить возможности повторной продажи. Возвращает массив:
+   {client, key, kind, title, occDate, days, service, lastDeal} */
+function repeatOpportunities(includeHandled = false) {
+  const res = [];
+  const today = parseISO(todayStr());
+  for (const c of state.clients) {
+    if (normPhoneDigits(c.phone).length !== 11) continue;   // нужен телефон
+    if (clientHasFutureDeal(c.id)) continue;                 // уже есть заказ
+    const deals = clientDeals(c.id).filter(d => d.stage === 'done');
+    const opps = [];
+
+    // A) ДР ребёнка / праздник — в ближайшие 3 недели
+    for (const h of (c.holidays || [])) {
+      const occ = nextOccurrence(h);
+      if (!occ) continue;
+      const du = daysUntil(occ);
+      if (du === null || du < 0 || du > REPEAT_BDAY_DAYS) continue;
+      if (/новый год|дм|снегур/i.test(h.title) && !isSellingSeasonNY()) continue;
+      const isNY = /новый год|дм|снегур/i.test(h.title);
+      opps.push({
+        key: `${occ.getFullYear()}:h:${h.id}`,
+        kind: isNY ? 'ny' : 'bday',
+        title: h.title, occDate: occ, days: du,
+      });
+    }
+
+    // B) Новогодний сегмент — заказывал ДМ раньше, сейчас сезон
+    if (isSellingSeasonNY()) {
+      const hadNY = deals.some(d => d.service === 'dm');
+      const already = opps.some(o => o.kind === 'ny');
+      if (hadNY && !already) {
+        opps.push({ key: `${new Date().getFullYear()}:ny`, kind: 'ny',
+          title: 'Новый год', occDate: null, days: null });
+      }
+    }
+
+    // C) Годовщина заказа — последний заказ 11–13 мес. назад, тишина полгода
+    if (!opps.length) {
+      const last = clientLastDoneDeal(c.id);
+      if (last) {
+        const ld = parseISO(last.date);
+        const daysAgo = Math.round((today - ld) / 86400000);
+        if (daysAgo >= 330 && daysAgo <= 400) {
+          opps.push({ key: `${today.getFullYear()}:anniv`, kind: 'anniv',
+            title: 'Годовщина заказа', occDate: null, days: null });
+        }
+      }
+    }
+
+    for (const o of opps) {
+      const st = repeatGet(c, o.key);
+      const handled = st && (st.status === 'written' || st.status === 'agreed' || st.status === 'declined' ||
+        (st.status === 'later' && st.until && st.until > todayStr()));
+      if (handled && !includeHandled) continue;
+      if (!handled && includeHandled) continue;
+      const last = clientLastDoneDeal(c.id);
+      res.push({ client: c, ...o, status: st ? st.status : null,
+        service: (last && last.service) || 'other', lastDeal: last });
+    }
+  }
+  // сортировка: у кого праздник ближе — выше; затем НГ, затем годовщины
+  const rank = k => ({ bday: 0, ny: 1, anniv: 2 }[k] ?? 3);
+  res.sort((a, b) => {
+    if (a.days != null && b.days != null) return a.days - b.days;
+    if (a.days != null) return -1;
+    if (b.days != null) return 1;
+    return rank(a.kind) - rank(b.kind);
+  });
+  return res;
+}
+
+function repeatMessage(opp) {
+  const c = opp.client;
+  const kids = childNames(c.notes);
+  const svc = SERVICES[opp.service] || SERVICES.other;
+  const forKids = kids ? ` к ${kids}` : '';
+  if (opp.kind === 'ny') {
+    return `Здравствуйте, ${firstName(c.name)}! 🎄 В прошлом году Дед Мороз со Снегурочкой приходили${forKids || ' к вам'} — было волшебно! Открыл запись на этот Новый год, лучшие даты уже разбирают. Забронировать ваш визит? Для постоянных — приятная цена 🎁`;
+  }
+  if (opp.kind === 'bday') {
+    return `Здравствуйте, ${firstName(c.name)}! 🎉 Скоро ${String(opp.title).toLowerCase()}${kids ? ' у ' + kids : ''}! В прошлый раз заказывали «${svc.name}» — было здорово. Повторим или подберём что-то новенькое? Для постоянных клиентов — специальная цена.`;
+  }
+  return `Здравствуйте, ${firstName(c.name)}! Год назад делали для вас «${svc.name}» 🎉 Соскучились! Планируете праздник в ближайшее время? Подберём лучшую дату и цену для постоянного клиента.`;
+}
+
+function repeatKindLabel(kind) {
+  return { bday: '🎂 Скоро праздник', ny: '🎅 Новогодний клиент', anniv: '🔁 Годовщина заказа' }[kind] || '';
+}
+
+function renderRepeat() {
+  if (!window.__repeatFilter) window.__repeatFilter = '';
+  const filter = window.__repeatFilter;
+  const all = repeatOpportunities();
+  const list = filter ? all.filter(o => o.kind === filter) : all;
+
+  // метрики
+  let written = 0, agreed = 0, declined = 0;
+  for (const c of state.clients) {
+    for (const k in (c.repeat || {})) {
+      const s = c.repeat[k].status;
+      if (s === 'written') written++;
+      else if (s === 'agreed') agreed++;
+      else if (s === 'declined') declined++;
+    }
+  }
+  const agreedSum = state.deals
+    .filter(d => d.source === 'Повторная продажа')
+    .reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  document.getElementById('repeat-metric').innerHTML = `
+    <div class="kpi"><div class="kpi-num">${all.length} <span class="kpi-emoji">🔥</span></div><div class="kpi-label">пора написать</div></div>
+    <div class="kpi"><div class="kpi-num">${written}</div><div class="kpi-label">написано</div></div>
+    <div class="kpi"><div class="kpi-num" style="color:var(--success)">${agreed}</div><div class="kpi-label">согласились</div></div>
+    <div class="kpi"><div class="kpi-num">${agreedSum ? fmtMoney(agreedSum) : '—'}</div><div class="kpi-label">повторных продаж</div></div>`;
+
+  // фильтры-чипы
+  const counts = { bday: 0, ny: 0, anniv: 0 };
+  all.forEach(o => counts[o.kind]++);
+  document.getElementById('repeat-filters').innerHTML = [
+    ['', `Все (${all.length})`],
+    ['bday', `🎂 Праздники (${counts.bday})`],
+    ['ny', `🎅 Новогодние (${counts.ny})`],
+    ['anniv', `🔁 Годовщины (${counts.anniv})`],
+  ].map(([k, label]) =>
+    `<button class="btn btn-sm ${filter === k ? 'btn-primary' : ''}" data-rfilter="${k}">${label}</button>`).join('');
+  document.querySelectorAll('[data-rfilter]').forEach(b => b.addEventListener('click', () => {
+    window.__repeatFilter = b.dataset.rfilter; renderRepeat();
+  }));
+
+  // список
+  const wrap = document.getElementById('repeat-list');
+  wrap.innerHTML = list.length ? list.map(o => repeatCardHtml(o)).join('')
+    : `<div class="empty"><div class="empty-emoji">✅</div><p>${all.length ? 'В этой категории пусто.' : 'Сейчас никому писать не нужно — все на связи.<br>Загляните позже: система сама подскажет, когда придёт время.'}</p></div>`;
+  bindRepeatButtons();
+
+  // обработанные
+  const handled = repeatOpportunities(true);
+  document.getElementById('repeat-done-card').style.display = handled.length ? '' : 'none';
+  document.getElementById('repeat-done').innerHTML = handled.map(o => {
+    const badge = { written: '✍️ написали', agreed: '✅ согласился', declined: '❌ отказ', later: '⏰ позже' }[o.status] || '';
+    return `<div class="list-item">
+      <div class="li-emoji">${o.status === 'agreed' ? '✅' : (o.status === 'declined' ? '❌' : '✍️')}</div>
+      <div class="li-body"><div class="li-title">${esc(o.client.name)}</div>
+        <div class="li-sub">${repeatKindLabel(o.kind)} · ${badge}</div></div>
+      <div class="li-right"><button class="btn btn-sm" data-rundo="${o.client.id}|${o.key}">вернуть</button></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-rundo]').forEach(b => b.addEventListener('click', () => {
+    const [cid, key] = b.dataset.rundo.split('|');
+    setRepeatStatus(cid, key, null); renderRepeat();
+  }));
+}
+
+function repeatCardHtml(o) {
+  const c = o.client;
+  const msg = repeatMessage(o);
+  const svc = SERVICES[o.service] || SERVICES.other;
+  const sub = [
+    o.days != null ? `через ${o.days} дн.` : '',
+    o.lastDeal ? `прошлый: ${svc.emoji} ${fmtMoney(o.lastDeal.amount)} (${fmtDate(o.lastDeal.date, false)})` : '',
+    c.phone,
+  ].filter(Boolean).join(' · ');
+  const rid = `${c.id}|${o.key}|${o.service}`;
+  return `
+  <div class="card repeat-card">
+    <div class="rc-head">
+      <div class="cc-avatar">${esc(initials(c.name))}</div>
+      <div style="flex:1;min-width:0">
+        <div class="cc-name">${esc(c.name)} <span class="rc-kind">${repeatKindLabel(o.kind)}</span></div>
+        <div class="cc-phone">${esc(sub)}</div>
+      </div>
+    </div>
+    <div class="rc-msg" title="так уйдёт сообщение">${esc(msg)}</div>
+    <div class="rc-msgbtns">${msgButtonsHtml(c.phone, msg, { type: 'repeat', cid: c.id, key: o.key })}</div>
+    <div class="rc-actions">
+      <button class="btn btn-sm" style="color:var(--success)" data-ragree="${rid}">✅ Согласился</button>
+      <button class="btn btn-sm" data-rlater="${c.id}|${o.key}">⏰ Позже</button>
+      <button class="btn btn-sm" data-rdecline="${c.id}|${o.key}">❌ Отказ</button>
+    </div>
+  </div>`;
+}
+
+function bindRepeatButtons() {
+  document.querySelectorAll('[data-ragree]').forEach(b => b.addEventListener('click', () => {
+    const [cid, key, service] = b.dataset.ragree.split('|');
+    repeatAgree(cid, key, service);
+  }));
+  document.querySelectorAll('[data-rlater]').forEach(b => b.addEventListener('click', () => {
+    const [cid, key] = b.dataset.rlater.split('|');
+    setRepeatStatus(cid, key, 'later');
+    renderRepeat();
+    toast('Напомню через неделю ⏰');
+  }));
+  document.querySelectorAll('[data-rdecline]').forEach(b => b.addEventListener('click', () => {
+    const [cid, key] = b.dataset.rdecline.split('|');
+    setRepeatStatus(cid, key, 'declined');
+    renderRepeat();
+  }));
+}
+
+function setRepeatStatus(clientId, key, status) {
+  const c = getClient(clientId);
+  if (!c) return;
+  c.repeat = c.repeat || {};
+  if (status === null) { delete c.repeat[key]; }
+  else {
+    const rec = { status, at: todayStr() };
+    if (status === 'later') {
+      const d = parseISO(todayStr()); d.setDate(d.getDate() + REPEAT_LATER_SNOOZE);
+      rec.until = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    c.repeat[key] = rec;
+  }
+  save();
+}
+
+function repeatAgree(clientId, key, service) {
+  const c = getClient(clientId);
+  if (!c) return;
+  setRepeatStatus(clientId, key, 'agreed');
+  const s = SERVICES[service] || SERVICES.other;
+  const deal = {
+    id: uid(), clientId, service,
+    title: `Повторный заказ — ${s.name}`,
+    date: '', time: '', amount: 0, prepaid: 0,
+    staffName: '', staffPay: 0,
+    address: c.address || '', note: 'Повторная продажа',
+    source: 'Повторная продажа',
+    stage: 'talk', createdAt: Date.now(),
+  };
+  state.deals.push(deal);
+  save();
+  renderRepeat();
+  toast('Сделка создана в «Переговорах» 💼✅', 'success');
+  setTimeout(() => openDealForm(deal.id), 500);
+}
+
 function firstName(name) {
   const w = String(name || '').trim().split(/[\s(,]+/)[0];
   return w || 'друг';
@@ -1353,20 +1667,14 @@ function renderMailSendList() {
   }
   wrap.innerHTML = recipients.map(c => {
     const msg = personalize(camp.text, c);
-    const digits = normPhoneDigits(c.phone);
-    const wa = `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
-    const sms = `sms:+${digits}${isIOS() ? '&' : '?'}body=${encodeURIComponent(msg)}`;
     const sent = camp.sentIds.includes(c.id);
     return `
-    <div class="list-item" style="cursor:default;${sent ? 'opacity:.55' : ''}">
+    <div class="list-item mail-send-item" style="cursor:default;${sent ? 'opacity:.55' : ''}">
       <div class="li-emoji">${sent ? '✅' : '✉️'}</div>
       <div class="li-body">
         <div class="li-title">${esc(c.name)}</div>
-        <div class="li-sub" title="${esc(msg)}">${esc(msg.slice(0, 70))}…</div>
-      </div>
-      <div class="li-right btn-row" style="flex-wrap:nowrap">
-        <a class="btn btn-sm btn-primary" href="${wa}" target="_blank" rel="noopener" onclick="markSent('${c.id}')">WhatsApp</a>
-        <a class="btn btn-sm" href="${sms}" onclick="markSent('${c.id}')">SMS</a>
+        <div class="li-sub" title="${esc(msg)}">${esc(msg.slice(0, 60))}…</div>
+        <div class="mail-send-btns">${msgButtonsHtml(c.phone, msg, { type: 'mail', cid: c.id })}</div>
       </div>
     </div>`;
   }).join('');
@@ -1642,6 +1950,10 @@ function bindEvents() {
   document.getElementById('btn-settings-mobile').addEventListener('click', () => showView('settings'));
   document.getElementById('btn-mailing-mobile').addEventListener('click', () => showView('mailing'));
   document.getElementById('btn-stats-mobile').addEventListener('click', () => showView('stats'));
+  document.getElementById('btn-repeat-mobile').addEventListener('click', () => showView('repeat'));
+
+  // единый обработчик кнопок мессенджеров (WhatsApp/Telegram/MAX)
+  document.addEventListener('click', handleMsgButtonClick);
 
   // статистика
   ['stats-year', 'stats-month', 'stats-service'].forEach(id =>
