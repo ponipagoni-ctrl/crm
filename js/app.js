@@ -274,20 +274,6 @@ function renderDashboard() {
       <div class="kpi-label">выручка за этот месяц</div>
     </div>`;
 
-  // праздники
-  const hWrap = document.getElementById('dash-holidays');
-  const holidays60 = upcomingHolidays(60);
-  hWrap.innerHTML = holidays60.length ? holidays60.slice(0, 8).map(item => `
-    <div class="list-item" onclick="openClientDetail('${item.client.id}')">
-      <div class="li-emoji">🎂</div>
-      <div class="li-body">
-        <div class="li-title">${esc(item.client.name)}</div>
-        <div class="li-sub">${esc(item.holiday.title)} · ${fmtDate(item.holiday.date, false)}${item.client.phone ? ' · ' + esc(item.client.phone) : ''}</div>
-      </div>
-      <div class="li-right">${daysBadge(item.days)}</div>
-    </div>`).join('')
-    : '<div class="list-empty">Праздников в ближайшие 60 дней нет. Добавьте даты праздников клиентам — и здесь появятся напоминания.</div>';
-
   // заказы
   const today = todayStr();
   const orders = state.deals
