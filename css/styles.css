@@ -284,6 +284,14 @@ input,select,textarea{font:inherit;color:inherit}
 .stats-details td{background:#fbfbfd;white-space:normal}
 .stats-details .list-item{padding:8px 6px}
 
+/* Today / tasks */
+.task-item .task-check{width:20px;height:20px;flex-shrink:0;accent-color:var(--success);cursor:pointer}
+.task-del{color:var(--muted);padding:4px 9px}
+.task-del:hover{color:var(--danger)}
+.auto-item.today{background:#eff6ff}
+.auto-item.warn{background:#fff7ed}
+.auto-item.today:hover,.auto-item.warn:hover{filter:brightness(.98)}
+
 /* Repeat sales */
 .repeat-card{padding:14px}
 .rc-head{display:flex;gap:11px;align-items:center;margin-bottom:10px}

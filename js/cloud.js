@@ -15,14 +15,14 @@ const Cloud = (() => {
     'js/vendor/firebase-auth-compat.js',
     'js/vendor/firebase-firestore-compat.js',
   ];
-  const KINDS = ['clients', 'deals', 'campaigns'];
+  const KINDS = ['clients', 'deals', 'campaigns', 'tasks'];
 
   let db = null, auth = null;
   let active = false;
   let handlers = null;               // { onReady, applyRemote }
   let ready = false;
-  let docs = { clients: {}, deals: {}, campaigns: {} }; // id -> данные
-  let mirror = { clients: {}, deals: {}, campaigns: {} }; // id -> JSON (что уже в облаке)
+  let docs = { clients: {}, deals: {}, campaigns: {}, tasks: {} }; // id -> данные
+  let mirror = { clients: {}, deals: {}, campaigns: {}, tasks: {} }; // id -> JSON (что уже в облаке)
   let metaExists = false;
   let unsubscribers = [];
 
@@ -180,6 +180,7 @@ const Cloud = (() => {
       clients: Object.values(docs.clients),
       deals: Object.values(docs.deals),
       campaigns: Object.values(docs.campaigns).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+      tasks: Object.values(docs.tasks),
     };
   }
 

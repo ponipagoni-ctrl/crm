@@ -30,6 +30,7 @@ service cloud.firestore {
     match /clients/{id}   { allow read, write: if isApproved(); }
     match /deals/{id}     { allow read, write: if isApproved(); }
     match /campaigns/{id} { allow read, write: if isApproved(); }
+    match /tasks/{id}     { allow read, write: if isApproved(); }
     match /meta/{id}      { allow read, write: if isApproved(); }
   }
 }

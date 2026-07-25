@@ -59,6 +59,7 @@ function applyLoadedState(loaded) {
   }
   state.campaigns = state.campaigns || [];
   state.activeCampaign = state.activeCampaign || null;
+  state.tasks = state.tasks || [];
 }
 function save() {
   if (Cloud.active()) Cloud.persist(state);
@@ -245,8 +246,146 @@ function upcomingHolidays(days = 60) {
   return res;
 }
 
+/* ================= ЗАДАЧИ / «ЧТО ДЕЛАТЬ СЕГОДНЯ» ================= */
+/* Список = ручные задачи (просроченные + на сегодня) + авто-напоминания из данных. */
+function todayTasks() {
+  const today = todayStr();
+  const manual = (state.tasks || [])
+    .filter(t => !t.done && (!t.date || t.date <= today))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return manual;
+}
+
+/* авто-напоминания (не хранятся) */
+function autoReminders() {
+  const today = todayStr();
+  const now = new Date();
+  const tmr = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrow = `${tmr.getFullYear()}-${String(tmr.getMonth() + 1).padStart(2, '0')}-${String(tmr.getDate()).padStart(2, '0')}`;
+  const items = [];
+
+  // заказы сегодня
+  state.deals.filter(d => d.date === today && d.stage !== 'cancelled')
+    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    .forEach(d => {
+      const s = SERVICES[d.service] || SERVICES.other;
+      const c = getClient(d.clientId);
+      items.push({ icon: s.emoji, cls: 'today', title: `Сегодня${d.time ? ' в ' + d.time : ''}: ${d.title || s.name}`,
+        sub: [c && c.name, d.address].filter(Boolean).join(' · '), deal: d.id });
+    });
+  // заказы завтра — подтвердить
+  state.deals.filter(d => d.date === tomorrow && OPEN_STAGES.includes(d.stage))
+    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    .forEach(d => {
+      const s = SERVICES[d.service] || SERVICES.other;
+      const c = getClient(d.clientId);
+      items.push({ icon: '📞', cls: '', title: `Подтвердить завтра${d.time ? ' в ' + d.time : ''}: ${d.title || s.name}`,
+        sub: [c && c.name, d.address].filter(Boolean).join(' · '), deal: d.id });
+    });
+  // прошедшие открытые заказы — закрыть/обновить
+  state.deals.filter(d => d.date && d.date < today && OPEN_STAGES.includes(d.stage))
+    .forEach(d => {
+      const s = SERVICES[d.service] || SERVICES.other;
+      items.push({ icon: '⚠️', cls: 'warn', title: `Заказ прошёл, отметьте итог: ${d.title || s.name}`,
+        sub: fmtDate(d.date, false) + ' · этап «' + (STAGES.find(x => x.id === d.stage) || {}).name + '»', deal: d.id });
+    });
+  // повторные продажи
+  const rep = repeatOpportunities().length;
+  if (rep) items.push({ icon: '🔁', cls: '', title: `Пора написать по повторным продажам: ${rep} чел.`,
+    sub: 'открыть раздел «Повторные»', view: 'repeat' });
+
+  return items;
+}
+
+function renderToday() {
+  const wrap = document.getElementById('today-list');
+  if (!wrap) return;
+  const tasks = todayTasks();
+  const auto = autoReminders();
+  const today = todayStr();
+
+  const taskHtml = tasks.map(t => {
+    const overdue = t.date && t.date < today;
+    const c = t.clientId ? getClient(t.clientId) : null;
+    const open = t.dealId ? `openDealForm('${t.dealId}')` : (t.clientId ? `openClientDetail('${t.clientId}')` : '');
+    return `<div class="list-item task-item">
+      <input type="checkbox" class="task-check" data-task="${t.id}">
+      <div class="li-body" ${open ? `onclick="${open}"` : ''} style="${open ? 'cursor:pointer' : ''}">
+        <div class="li-title">${esc(t.title)}</div>
+        <div class="li-sub">${overdue ? '<span style="color:var(--danger)">просрочено · </span>' : ''}${t.date ? fmtDate(t.date, false) : 'без срока'}${c ? ' · ' + esc(c.name) : ''}</div>
+      </div>
+      <div class="li-right"><button class="btn btn-sm task-del" data-taskdel="${t.id}" title="удалить">✕</button></div>
+    </div>`;
+  }).join('');
+
+  const autoHtml = auto.map(a => {
+    const act = a.deal ? `openDealForm('${a.deal}')` : (a.view ? `showView('${a.view}')` : '');
+    return `<div class="list-item auto-item ${a.cls}" ${act ? `onclick="${act}"` : ''} style="${act ? 'cursor:pointer' : ''}">
+      <div class="li-emoji">${a.icon}</div>
+      <div class="li-body"><div class="li-title">${esc(a.title)}</div>${a.sub ? `<div class="li-sub">${esc(a.sub)}</div>` : ''}</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = (taskHtml + autoHtml) ||
+    '<div class="list-empty">На сегодня задач нет 🎉 Нажмите «＋ Задача», чтобы добавить напоминание.</div>';
+
+  wrap.querySelectorAll('.task-check').forEach(cb => cb.addEventListener('change', () => toggleTask(cb.dataset.task)));
+  wrap.querySelectorAll('[data-taskdel]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); deleteTask(b.dataset.taskdel);
+  }));
+}
+
+function toggleTask(id) {
+  const t = (state.tasks || []).find(x => x.id === id);
+  if (!t) return;
+  t.done = true; t.doneAt = Date.now();
+  save();
+  if (currentView === 'dashboard') renderDashboard();
+  toast('Задача выполнена ✅', 'success');
+}
+function deleteTask(id) {
+  state.tasks = (state.tasks || []).filter(x => x.id !== id);
+  save();
+  if (currentView === 'dashboard') renderDashboard();
+}
+
+function openTaskForm(presetClientId = null, presetDealId = null) {
+  const clientOptions = state.clients.slice().sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    .map(c => `<option value="${c.id}" ${presetClientId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+  openModal(`
+  <div class="modal-head"><h2>✅ Новая задача</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <div class="form-grid">
+    <div class="field"><label>Что сделать *</label>
+      <input id="tf-title" type="text" placeholder="Позвонить, взять предоплату, купить шарики…"></div>
+    <div class="form-row">
+      <div class="field"><label>Когда</label><input id="tf-date" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>Клиент (необязательно)</label>
+        <select id="tf-client"><option value="">—</option>${clientOptions}</select></div>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeModal()">Отмена</button>
+    <button class="btn btn-primary" id="tf-save">Добавить</button>
+  </div>`);
+  document.getElementById('tf-save').addEventListener('click', () => {
+    const title = document.getElementById('tf-title').value.trim();
+    if (!title) { toast('Впишите задачу', 'error'); return; }
+    state.tasks = state.tasks || [];
+    state.tasks.push({
+      id: uid(), title, date: document.getElementById('tf-date').value || todayStr(),
+      clientId: document.getElementById('tf-client').value || presetClientId || null,
+      dealId: presetDealId || null, done: false, createdAt: Date.now(),
+    });
+    save(); closeModal();
+    if (currentView === 'dashboard') renderDashboard();
+    toast('Задача добавлена ✅', 'success');
+  });
+  setTimeout(() => { const el = document.getElementById('tf-title'); if (el) el.focus(); }, 50);
+}
+
 /* ---------------- dashboard ---------------- */
 function renderDashboard() {
+  renderToday();
   const holidays30 = upcomingHolidays(30);
   const openDeals = state.deals.filter(d => OPEN_STAGES.includes(d.stage));
   const now = new Date();
@@ -923,6 +1062,7 @@ function openQuickAdd() {
   <div class="btn-row" style="flex-direction:column">
     <button class="btn btn-primary" style="justify-content:center;padding:14px" onclick="openClientForm()">👤 Клиента</button>
     <button class="btn btn-primary" style="justify-content:center;padding:14px" onclick="openDealForm()">💼 Сделку / заказ</button>
+    <button class="btn btn-primary" style="justify-content:center;padding:14px" onclick="openTaskForm()">✅ Задачу</button>
   </div>`);
 }
 
@@ -1938,6 +2078,7 @@ function init() {
         state.clients = remote.clients;
         state.deals = remote.deals;
         state.campaigns = remote.campaigns;
+        state.tasks = remote.tasks || [];
         if (uiStarted) render();
       },
     });
@@ -1954,6 +2095,7 @@ function bindEvents() {
   document.getElementById('btn-mailing-mobile').addEventListener('click', () => showView('mailing'));
   document.getElementById('btn-stats-mobile').addEventListener('click', () => showView('stats'));
   document.getElementById('btn-repeat-mobile').addEventListener('click', () => showView('repeat'));
+  document.getElementById('btn-add-task').addEventListener('click', () => openTaskForm());
 
   // единый обработчик кнопок мессенджеров (WhatsApp/Telegram/MAX)
   document.addEventListener('click', handleMsgButtonClick);
