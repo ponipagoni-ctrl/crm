@@ -780,11 +780,17 @@ function openClientDetail(id) {
   const dealsHtml = deals.map(d => {
     const s = SERVICES[d.service] || SERVICES.other;
     const stage = STAGES.find(x => x.id === d.stage);
-    return `<div class="list-item" onclick="openDealForm('${d.id}')">
+    const extra = [
+      d.address ? '📍 ' + esc(d.address) : '',
+      d.note ? '📝 ' + esc(d.note) : '',
+      Number(d.staffPay) ? '🧑‍💼 ' + esc(d.staffName || '') : '',
+    ].filter(Boolean).join(' · ');
+    return `<div class="list-item" style="align-items:flex-start" onclick="openDealForm('${d.id}')">
       <div class="li-emoji">${s.emoji}</div>
       <div class="li-body">
         <div class="li-title">${esc(d.title || s.name)}</div>
-        <div class="li-sub">${d.date ? fmtDate(d.date) : 'без даты'} · ${stage ? stage.name : ''}</div>
+        <div class="li-sub">${d.date ? fmtDate(d.date) : 'без даты'}${d.time ? ' ' + esc(d.time) : ''} · ${stage ? stage.name : ''}</div>
+        ${extra ? `<div class="li-sub" style="white-space:normal">${extra}</div>` : ''}
       </div>
       <div class="li-right"><div class="li-money">${fmtMoney(d.amount)}</div></div>
     </div>`;
@@ -1287,11 +1293,13 @@ function msgButtonsHtml(phone, text, mark) {
   let b64 = '';
   try { b64 = btoa(unescape(encodeURIComponent(text))); } catch (e) { b64 = ''; }
   const dm = `data-mark-type="${mark.type}" data-cid="${esc(mark.cid)}"` + (mark.key ? ` data-key="${esc(mark.key)}"` : '');
+  // Telegram: ссылка-шаринг открывает Telegram (приложение/веб) с уже готовым текстом,
+  // клиент выбирает контакт и отправляет. MAX: пока копируем текст + открываем приложение.
   return `
     <a class="btn btn-sm btn-primary msg-btn" data-mtype="wa" ${dm}
        href="https://wa.me/${digits}?text=${enc}" target="_blank" rel="noopener">🟢 WhatsApp</a>
-    <a class="btn btn-sm msg-btn" data-mtype="tg" data-copy="${b64}" ${dm}
-       href="tg://resolve?phone=${digits}">🔵 Telegram</a>
+    <a class="btn btn-sm msg-btn" data-mtype="tg" ${dm}
+       href="https://t.me/share/url?url=%20&text=${enc}" target="_blank" rel="noopener">🔵 Telegram</a>
     <a class="btn btn-sm msg-btn" data-mtype="max" data-copy="${b64}" ${dm}
        href="https://max.ru/" target="_blank" rel="noopener">🟣 MAX</a>`;
 }
@@ -1299,7 +1307,7 @@ function msgButtonsHtml(phone, text, mark) {
 function handleMsgButtonClick(e) {
   const a = e.target.closest('.msg-btn');
   if (!a) return;
-  // Telegram/MAX не умеют подставлять текст по ссылке — копируем в буфер
+  // MAX не умеет подставлять текст по ссылке — копируем в буфер
   if (a.dataset.copy && navigator.clipboard) {
     try {
       const txt = decodeURIComponent(escape(atob(a.dataset.copy)));
@@ -1308,8 +1316,10 @@ function handleMsgButtonClick(e) {
     } catch (err) {}
   }
   const mt = a.dataset.markType, cid = a.dataset.cid, key = a.dataset.key;
+  // ВАЖНО: в «Повторных» НЕ убираем клиента из списка — только помечаем «написали»,
+  // чтобы можно было потом нажать «согласился / позже / отказ».
   setTimeout(() => {
-    if (mt === 'repeat') { setRepeatStatus(cid, key, 'written'); if (currentView === 'repeat') renderRepeat(); }
+    if (mt === 'repeat') { setRepeatStatus(cid, key, 'contacted'); if (currentView === 'repeat') renderRepeat(); }
     else if (mt === 'mail') { markSent(cid); }
   }, 350);
 }
@@ -1402,7 +1412,9 @@ function repeatOpportunities(includeHandled = false) {
 
     for (const o of opps) {
       const st = repeatGet(c, o.key);
-      const handled = st && (st.status === 'written' || st.status === 'agreed' || st.status === 'declined' ||
+      // «contacted» (написали) остаётся в активном списке — чтобы отметить исход;
+      // из списка убирают только явные исходы: согласился / отказ / позже (до срока).
+      const handled = st && (st.status === 'agreed' || st.status === 'declined' ||
         (st.status === 'later' && st.until && st.until > todayStr()));
       if (handled && !includeHandled) continue;
       if (!handled && includeHandled) continue;
@@ -1451,8 +1463,8 @@ function renderRepeat() {
   for (const c of state.clients) {
     for (const k in (c.repeat || {})) {
       const s = c.repeat[k].status;
-      if (s === 'written') written++;
-      else if (s === 'agreed') agreed++;
+      if (s === 'contacted') written++;
+      else if (s === 'agreed') { agreed++; written++; }
       else if (s === 'declined') declined++;
     }
   }
@@ -1489,7 +1501,7 @@ function renderRepeat() {
   const handled = repeatOpportunities(true);
   document.getElementById('repeat-done-card').style.display = handled.length ? '' : 'none';
   document.getElementById('repeat-done').innerHTML = handled.map(o => {
-    const badge = { written: '✍️ написали', agreed: '✅ согласился', declined: '❌ отказ', later: '⏰ позже' }[o.status] || '';
+    const badge = { contacted: '✍️ написали', agreed: '✅ согласился', declined: '❌ отказ', later: '⏰ позже' }[o.status] || '';
     return `<div class="list-item">
       <div class="li-emoji">${o.status === 'agreed' ? '✅' : (o.status === 'declined' ? '❌' : '✍️')}</div>
       <div class="li-body"><div class="li-title">${esc(o.client.name)}</div>
@@ -1507,24 +1519,29 @@ function repeatCardHtml(o) {
   const c = o.client;
   const msg = repeatMessage(o);
   const svc = SERVICES[o.service] || SERVICES.other;
+  const pastCount = clientDeals(c.id).filter(d => d.stage === 'done').length;
   const sub = [
     o.days != null ? `через ${o.days} дн.` : '',
     o.lastDeal ? `прошлый: ${svc.emoji} ${fmtMoney(o.lastDeal.amount)} (${fmtDate(o.lastDeal.date, false)})` : '',
     c.phone,
   ].filter(Boolean).join(' · ');
   const rid = `${c.id}|${o.key}|${o.service}`;
+  const contacted = o.status === 'contacted';
   return `
   <div class="card repeat-card">
-    <div class="rc-head">
+    <div class="rc-head" onclick="openClientDetail('${c.id}')" style="cursor:pointer" title="открыть карточку клиента">
       <div class="cc-avatar">${esc(initials(c.name))}</div>
       <div style="flex:1;min-width:0">
-        <div class="cc-name">${esc(c.name)} <span class="rc-kind">${repeatKindLabel(o.kind)}</span></div>
+        <div class="cc-name">${esc(c.name)} <span class="rc-kind">${repeatKindLabel(o.kind)}</span>${contacted ? ' <span class="rc-kind" style="background:#dcfce7;color:#166534">✍️ вы написали</span>' : ''}</div>
         <div class="cc-phone">${esc(sub)}</div>
       </div>
+      <span class="rc-open">›</span>
     </div>
+    ${o.lastDeal ? `<div class="rc-past" onclick="openClientDetail('${c.id}')">📋 Прошлых заказов: <b>${pastCount}</b>${o.lastDeal.address ? ` · последний адрес: ${esc(o.lastDeal.address)}` : ''} — открыть историю и карточку</div>` : ''}
     <div class="rc-msg" title="так уйдёт сообщение">${esc(msg)}</div>
     <div class="rc-msgbtns">${msgButtonsHtml(c.phone, msg, { type: 'repeat', cid: c.id, key: o.key })}</div>
     <div class="rc-actions">
+      <button class="btn btn-sm" onclick="openClientDetail('${c.id}')">👤 Карточка / история</button>
       <button class="btn btn-sm" style="color:var(--success)" data-ragree="${rid}">✅ Согласился</button>
       <button class="btn btn-sm" data-rlater="${c.id}|${o.key}">⏰ Позже</button>
       <button class="btn btn-sm" data-rdecline="${c.id}|${o.key}">❌ Отказ</button>
