@@ -238,12 +238,14 @@
       </div>
       <div class="card">
         <div class="card-head"><h2>💾 Резервная копия</h2></div>
-        <p class="muted">Данные хранятся в этом браузере (localStorage). Регулярно сохраняйте копию, чтобы перенести на другое устройство.</p>
+        <div id="backup-status" class="bk-status"></div>
+        <p class="muted">CRM сама раз в день сохраняет авто-копию в этом браузере. Дополнительно скачивайте копию файлом, чтобы перенести на другое устройство или сохранить вне браузера.</p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-export-json">⬇ Скачать копию (JSON)</button>
-          <button class="btn" id="btn-import-json-trigger">⬆ Восстановить из копии</button>
+          <button class="btn" id="btn-import-json-trigger">⬆ Восстановить из файла</button>
           <input type="file" id="import-json" accept=".json" class="hidden">
         </div>
+        <div id="autobackup-list" class="bk-snaps"></div>
       </div>
       <div class="card">
         <div class="card-head"><h2>📈 Статистика базы</h2></div>

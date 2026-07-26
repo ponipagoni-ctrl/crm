@@ -772,6 +772,7 @@ function renderSettings() {
     <div><span>Сделок всего</span><b>${state.deals.length}</b></div>
     <div><span>Выполнено сделок</span><b>${done.length}</b></div>
     <div><span>Выручка (выполненные)</span><b>${fmtMoney(total)}</b></div>`;
+  renderBackupInfo();
 }
 
 /* ---------------- modals ---------------- */
@@ -1100,7 +1101,9 @@ function exportJSON() {
   a.download = `makeday-crm-${todayStr()}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
+  try { localStorage.setItem(LAST_EXPORT_KEY, new Date().toISOString()); } catch (e) {}
   toast('Копия сохранена ⬇', 'success');
+  if (currentView === 'settings') renderBackupInfo();
 }
 
 function importJSON(file) {
@@ -1135,6 +1138,98 @@ function importJSON(file) {
     }
   };
   reader.readAsText(file);
+}
+
+/* ---------------- авто-резервные копии (в этом браузере) ---------------- */
+const AUTOBACKUP_KEY = 'makeday_crm_autobackup';
+const LAST_EXPORT_KEY = 'makeday_crm_last_export';
+const AUTOBACKUP_MAX = 7; // храним последние N ежедневных снимков
+
+function loadAutoBackups() {
+  try { return JSON.parse(localStorage.getItem(AUTOBACKUP_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function saveAutoBackups(list) {
+  try { localStorage.setItem(AUTOBACKUP_KEY, JSON.stringify(list)); }
+  catch (e) { // переполнение localStorage — выкидываем самый старый снимок и пробуем снова
+    if (list.length > 1) { list.shift(); saveAutoBackups(list); }
+  }
+}
+function snapshotData() {
+  return {
+    clients: state.clients || [], deals: state.deals || [],
+    campaigns: state.campaigns || [], tasks: state.tasks || [],
+    activeCampaign: state.activeCampaign || null, seeded: true,
+  };
+}
+// делает снимок не чаще одного раза в день; пустую базу не бэкапит
+function maybeAutoBackup() {
+  if (!state.clients || !state.clients.length) return;
+  const list = loadAutoBackups();
+  const today = todayStr();
+  const last = list[list.length - 1];
+  if (last && last.dateStr === today) return; // сегодня уже сохраняли
+  list.push({
+    at: new Date().toISOString(), dateStr: today,
+    counts: { clients: state.clients.length, deals: (state.deals || []).length },
+    data: snapshotData(),
+  });
+  while (list.length > AUTOBACKUP_MAX) list.shift();
+  saveAutoBackups(list);
+}
+
+function daysSince(iso) {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+function renderBackupInfo() {
+  const list = loadAutoBackups();
+  const statusEl = document.getElementById('backup-status');
+  if (statusEl) {
+    const dExp = daysSince(localStorage.getItem(LAST_EXPORT_KEY));
+    const cloudLine = (typeof Cloud !== 'undefined' && Cloud.active && Cloud.active())
+      ? '<div class="bk-line ok">☁️ Общая база в облаке — синхронизируется между устройствами команды автоматически</div>'
+      : '';
+    let expLine;
+    if (dExp === null) expLine = '<div class="bk-line warn">⚠️ Вы ещё ни разу не скачивали копию на устройство</div>';
+    else if (dExp === 0) expLine = '<div class="bk-line ok">✅ Копию скачали сегодня</div>';
+    else if (dExp <= 7) expLine = `<div class="bk-line ok">✅ Последняя скачанная копия — ${dExp} дн. назад</div>`;
+    else expLine = `<div class="bk-line warn">⚠️ Копию не скачивали ${dExp} дн. — стоит скачать свежую</div>`;
+    const autoLine = list.length
+      ? `<div class="bk-line ok">💾 Авто-копий в этом браузере: ${list.length} · последняя ${fmtDate(list[list.length - 1].dateStr)}</div>`
+      : '<div class="bk-line">💾 Авто-копии создаются автоматически раз в день при работе с CRM</div>';
+    statusEl.innerHTML = cloudLine + expLine + autoLine;
+  }
+  const listEl = document.getElementById('autobackup-list');
+  if (listEl) {
+    listEl.innerHTML = !list.length ? '' :
+      '<div class="bk-sub">Восстановить из авто-копии этого браузера:</div>' +
+      list.slice().reverse().map((s, i) => {
+        const realIdx = list.length - 1 - i;
+        return `<div class="bk-snap">
+          <div class="bk-snap-info"><b>${fmtDate(s.dateStr)}</b>
+            <span class="muted">${s.counts.clients} клиентов · ${s.counts.deals} сделок</span></div>
+          <button class="btn btn-sm" onclick="restoreAutoBackup(${realIdx})">Восстановить</button>
+        </div>`;
+      }).join('');
+  }
+}
+
+function restoreAutoBackup(idx) {
+  const list = loadAutoBackups();
+  const snap = list[idx];
+  if (!snap) return;
+  if (!confirm(`Восстановить базу на состояние от ${fmtDate(snap.dateStr)}?\n` +
+    `Сейчас в CRM: ${state.clients.length} клиентов. В копии: ${snap.counts.clients}.\n` +
+    `Текущие данные будут заменены копией.`)) return;
+  const d = snap.data;
+  state = {
+    clients: d.clients || [], deals: d.deals || [], campaigns: d.campaigns || [],
+    tasks: d.tasks || [], activeCampaign: d.activeCampaign || null, seeded: true,
+  };
+  save(); render();
+  toast('База восстановлена из авто-копии ✅', 'success');
 }
 
 /* --------- Excel import --------- */
@@ -2066,6 +2161,7 @@ function startApp(loaded) {
   applyLoadedState(loaded);
   bindEvents();
   uiStarted = true;
+  maybeAutoBackup();
   showView('dashboard');
 }
 
@@ -2079,6 +2175,7 @@ function init() {
         state.deals = remote.deals;
         state.campaigns = remote.campaigns;
         state.tasks = remote.tasks || [];
+        maybeAutoBackup();
         if (uiStarted) render();
       },
     });
