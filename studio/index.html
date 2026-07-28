@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MakeDay Studio — авто-монтаж роликов</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">🎬 MakeDay <b>Studio</b></div>
+    <a class="back" href="../index.html">← в CRM</a>
+  </header>
+
+  <main class="wrap">
+    <p class="lead">Загрузите нарезки с праздника и музыку — приложение само выберет живые моменты и соберёт короткий ролик под ритм. Всё считается на вашем устройстве, видео никуда не загружается.</p>
+
+    <!-- Шаг 1: видео -->
+    <section class="card">
+      <div class="card-h"><span class="num">1</span><h2>Видео с праздника</h2></div>
+      <label class="drop" id="drop-video">
+        <input type="file" id="in-video" accept="video/*" multiple hidden>
+        <div class="drop-in">
+          <div class="drop-ico">🎞️</div>
+          <div>Нажмите, чтобы выбрать клипы<br><span class="muted">можно несколько сразу</span></div>
+        </div>
+      </label>
+      <div id="video-list" class="thumbs"></div>
+    </section>
+
+    <!-- Шаг 2: музыка -->
+    <section class="card">
+      <div class="card-h"><span class="num">2</span><h2>Музыка</h2></div>
+      <label class="drop small" id="drop-audio">
+        <input type="file" id="in-audio" accept="audio/*" hidden>
+        <div class="drop-in">
+          <div class="drop-ico">🎵</div>
+          <div id="audio-label">Выберите трек (mp3, m4a…)<br><span class="muted">под него подрежется ритм</span></div>
+        </div>
+      </label>
+    </section>
+
+    <!-- Шаг 3: настройки -->
+    <section class="card">
+      <div class="card-h"><span class="num">3</span><h2>Настройки ролика</h2></div>
+
+      <div class="opt">
+        <div class="opt-t">Длительность</div>
+        <div class="chips" id="len-chips">
+          <button class="chip" data-len="15">15 сек</button>
+          <button class="chip active" data-len="30">30 сек</button>
+          <button class="chip" data-len="60">60 сек</button>
+          <button class="chip" data-len="custom">Своя</button>
+          <input type="number" id="len-custom" min="5" max="180" value="45" class="len-num hidden"> <span id="len-custom-s" class="muted hidden">сек</span>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="opt-t">Формат</div>
+        <div class="chips" id="fmt-chips">
+          <button class="chip active" data-fmt="9:16">📱 9:16 вертикальный</button>
+          <button class="chip" data-fmt="1:1">⬛ 1:1 квадрат</button>
+          <button class="chip" data-fmt="16:9">🖥️ 16:9 горизонт</button>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="opt-t">Качество / скорость</div>
+        <div class="chips" id="q-chips">
+          <button class="chip active" data-q="fast">⚡ Быстро (720p)</button>
+          <button class="chip" data-q="hq">💎 Качество (1080p)</button>
+        </div>
+      </div>
+
+      <div class="opt">
+        <label class="switch">
+          <input type="checkbox" id="opt-smart" checked>
+          <span>🧠 Умный выбор моментов <span class="muted">(живые/динамичные куски вместо простой нарезки по порядку)</span></span>
+        </label>
+      </div>
+    </section>
+
+    <button id="btn-make" class="make" disabled>Собрать ролик 🎬</button>
+    <p class="hint muted">Первый запуск качает видеодвижок (~30 МБ) — потом быстрее. Тяжёлые 4K-клипы на телефоне могут считаться медленно.</p>
+
+    <!-- Прогресс -->
+    <section class="card progress hidden" id="progress-card">
+      <div class="card-h"><h2>Собираю ролик…</h2></div>
+      <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+      <div id="stage" class="stage muted">Готовлю…</div>
+      <pre id="log" class="log"></pre>
+    </section>
+
+    <!-- Результат -->
+    <section class="card result hidden" id="result-card">
+      <div class="card-h"><h2>✅ Готово!</h2></div>
+      <video id="result-video" controls playsinline></video>
+      <a id="download" class="make dl" download="makeday-reel.mp4">⬇ Скачать ролик</a>
+      <button id="btn-again" class="chip" style="margin-top:10px">↺ Собрать заново</button>
+    </section>
+  </main>
+
+  <script src="vendor/util.js"></script>
+  <script src="vendor/ffmpeg.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

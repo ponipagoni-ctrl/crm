@@ -1,0 +1,72 @@
+:root{
+  --bg:#0f1220; --card:#171a2b; --card2:#1e2236; --line:#2a2f49;
+  --tx:#eef1ff; --muted:#9aa3c7; --accent:#6c5ce7; --accent2:#8b7bff;
+  --ok:#22c55e; --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #201a3a 0%, var(--bg) 55%);
+  color:var(--tx); font:16px/1.5 -apple-system,Segoe UI,Roboto,system-ui,sans-serif;
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+.top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;position:sticky;top:0;
+  background:rgba(15,18,32,.8);backdrop-filter:blur(10px);z-index:10;border-bottom:1px solid var(--line)}
+.brand{font-size:19px;font-weight:600;letter-spacing:.2px}
+.brand b{color:var(--accent2)}
+.back{color:var(--muted);text-decoration:none;font-size:14px}
+.back:hover{color:var(--tx)}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+.lead{color:var(--muted);font-size:15px;margin:6px 2px 22px}
+.muted{color:var(--muted)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card-h{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.card-h h2{font-size:16px;margin:0;font-weight:600}
+.num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700;flex:none}
+
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:26px;cursor:pointer;text-align:center;
+  transition:.15s;background:var(--card2)}
+.drop:hover,.drop.hover{border-color:var(--accent2);background:#22264a}
+.drop.small{padding:18px}
+.drop-in{display:flex;align-items:center;gap:14px;justify-content:center;flex-direction:column}
+.drop-ico{font-size:30px}
+.drop-in>div{font-size:14px}
+
+.thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.thumb{position:relative;width:88px;border-radius:10px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.thumb video,.thumb canvas{width:100%;height:120px;object-fit:cover;display:block}
+.thumb .dur{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.7);font-size:11px;padding:1px 5px;border-radius:5px}
+.thumb .del{position:absolute;right:4px;top:4px;background:rgba(0,0,0,.65);border:none;color:#fff;width:22px;height:22px;
+  border-radius:50%;cursor:pointer;font-size:13px;line-height:1}
+.thumb.busy::after{content:"анализ…";position:absolute;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;font-size:11px;color:#fff}
+
+.opt{margin-bottom:16px}
+.opt:last-child{margin-bottom:0}
+.opt-t{font-size:13px;color:var(--muted);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{background:var(--card2);border:1px solid var(--line);color:var(--tx);padding:9px 14px;border-radius:11px;
+  cursor:pointer;font-size:14px;transition:.12s;font-family:inherit}
+.chip:hover{border-color:var(--accent2)}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.len-num{width:70px;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font-size:14px}
+
+.switch{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px}
+.switch input{width:20px;height:20px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+.make{display:block;width:100%;text-align:center;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;border:none;padding:16px;border-radius:14px;font-size:17px;font-weight:700;cursor:pointer;
+  font-family:inherit;text-decoration:none;box-shadow:0 8px 24px -8px var(--accent)}
+.make:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.make:not(:disabled):hover{filter:brightness(1.07)}
+.hint{font-size:12.5px;text-align:center;margin:10px 4px 24px}
+
+.bar-wrap{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin-bottom:10px}
+.bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+.stage{font-size:14px;margin-bottom:8px}
+.log{background:#0c0e18;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px;color:#8891b8;
+  max-height:120px;overflow:auto;white-space:pre-wrap;margin:0}
+
+.result video{width:100%;border-radius:12px;background:#000;margin-bottom:14px;max-height:70vh}
+.dl{margin-top:0}
+.hidden{display:none!important}
