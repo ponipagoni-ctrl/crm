@@ -7,7 +7,7 @@
 const state = {
   videos: [],           // {file, duration, motion:[{t,m}], poster, ready, thumbEl}
   audio: null,          // {file, duration, beatInterval}
-  opts: { len: 30, fmt: '9:16', q: 'fast', smart: true },
+  opts: { len: 30, fmt: '9:16', q: 'fast', smart: true, cutStyle: 'normal', order: 'interleave', beatSync: true, seed: 1 },
 };
 
 let ff = null;          // экземпляр FFmpeg (ленивая загрузка)
@@ -236,53 +236,87 @@ function refreshMakeBtn() {
 }
 
 /* ---------------- построение плана нарезки ---------------- */
-function buildPlan() {
-  const target = state.opts.len;
-  const bi = state.audio?.beatInterval || 0.5;
-  // длина одного куска ~0.8..1.8 сек, кратна биту
-  let beatsPerCut = Math.max(1, Math.round(1.0 / bi));
-  let segDur = beatsPerCut * bi;
-  while (segDur < 0.7) { beatsPerCut++; segDur = beatsPerCut * bi; }
-  while (segDur > 1.8 && beatsPerCut > 1) { beatsPerCut--; segDur = beatsPerCut * bi; }
+// генератор псевдослучайных чисел (для «перемешать по-другому»)
+function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 
+function buildPlan() {
+  const o = state.opts;
+  const target = o.len;
+  const bi = (o.beatSync !== false && state.audio && state.audio.beatInterval) ? state.audio.beatInterval : 0.6;
+  // базовая длина куска, кратная биту; cutStyle сдвигает её
+  const styleTarget = o.cutStyle === 'calm' ? 1.7 : o.cutStyle === 'fast' ? 0.6 : 1.0;
+  let beatsPerCut = Math.max(1, Math.round(styleTarget / bi));
+  let segDur = beatsPerCut * bi;
+  const lo = o.cutStyle === 'calm' ? 1.2 : o.cutStyle === 'fast' ? 0.45 : 0.7;
+  const hi = o.cutStyle === 'calm' ? 2.6 : o.cutStyle === 'fast' ? 0.9 : 1.6;
+  while (segDur < lo) { beatsPerCut++; segDur = beatsPerCut * bi; }
+  while (segDur > hi && beatsPerCut > 1) { beatsPerCut--; segDur = beatsPerCut * bi; }
+
+  const nv = state.videos.length;
   let nSeg = Math.max(3, Math.round(target / segDur));
 
-  // кандидаты-окна из всех клипов
-  const cands = [];
-  state.videos.forEach((v, vi) => {
-    if (!v.duration) { cands.push({ vi, start: 0, dur: Math.min(segDur, 3), score: avgMotion(v, 0, segDur), whole: true }); return; }
-    const stepW = Math.max(0.3, segDur / 2);
+  // окна-кандидаты отдельно по каждому клипу
+  const rand = rng(o.seed || 1);
+  const perClip = state.videos.map((v, vi) => {
+    const wins = [];
+    if (!v.duration) { wins.push({ vi, start: 0, dur: Math.min(segDur, 3), score: rand() }); return wins; }
+    const stepW = Math.max(0.3, segDur * 0.5);
     for (let s = 0; s + segDur <= v.duration + 0.01; s += stepW) {
-      cands.push({ vi, start: s, dur: segDur, score: state.opts.smart ? avgMotion(v, s, segDur) : 0 });
+      const base = o.smart ? avgMotion(v, s, segDur) : 0;
+      wins.push({ vi, start: s, dur: segDur, score: base + rand() * (o.smart ? 0.0001 : 1) });
     }
-    if (cands.length === 0) cands.push({ vi, start: 0, dur: Math.min(segDur, v.duration), score: 0 });
+    if (!wins.length) wins.push({ vi, start: 0, dur: Math.min(segDur, v.duration), score: 0 });
+    return wins;
   });
 
-  let chosen;
-  if (state.opts.smart) {
-    // жадный отбор по «живости», без перекрытий в одном клипе, с разнообразием по клипам
-    const sorted = [...cands].sort((a, b) => b.score - a.score);
-    const perVideoCap = Math.max(1, Math.ceil(nSeg / Math.max(1, state.videos.length)) + 1);
-    const usedByVideo = {}, taken = [];
-    for (const c of sorted) {
-      if (taken.length >= nSeg) break;
-      const list = usedByVideo[c.vi] || (usedByVideo[c.vi] = []);
-      if (list.length >= perVideoCap) continue;
-      if (list.some(x => Math.abs(x - c.start) < c.dur * 0.9)) continue; // перекрытие
-      list.push(c.start); taken.push(c);
+  // сколько кусков берём с каждого клипа: поровну, но не больше, чем влезает без перекрытий
+  const capPerClip = state.videos.map((v, vi) => v.duration ? Math.max(1, Math.floor(v.duration / segDur)) : 1);
+  const want = new Array(nv).fill(0);
+  let remaining = nSeg, guard = 0;
+  while (remaining > 0 && guard++ < nSeg * 4 + 8) {
+    let advanced = false;
+    for (let vi = 0; vi < nv && remaining > 0; vi++) {
+      if (want[vi] < capPerClip[vi]) { want[vi]++; remaining--; advanced = true; }
     }
-    // если кандидатов не хватило — добираем оставшимися
-    for (const c of sorted) { if (taken.length >= nSeg) break; if (!taken.includes(c)) taken.push(c); }
-    chosen = taken;
-  } else {
-    // по порядку: равномерно по клипам и по времени
-    chosen = [];
-    let i = 0;
-    while (chosen.length < nSeg && cands.length) { chosen.push(cands[i % cands.length]); i++; if (i > nSeg * 4) break; }
+    if (!advanced) break; // все клипы исчерпаны
   }
 
-  // порядок вывода — по таймлайну (клип, затем время) для связности
-  chosen.sort((a, b) => a.vi - b.vi || a.start - b.start);
+  // в каждом клипе выбираем want[vi] непересекающихся окон (лучшие по «живости»), внутри — по времени
+  const spread = (o.seed && o.seed > 1) ? 0.3 : 0; // «перемешать» добавляет вариативности
+  const perClipChosen = perClip.map((wins, vi) => {
+    const k = want[vi]; if (k <= 0) return [];
+    const clipMax = wins.reduce((m, w) => Math.max(m, w.score), 0.0001);
+    const sorted = wins.map(w => ({ w, key: w.score + rand() * spread * clipMax }))
+      .sort((a, b) => b.key - a.key).map(x => x.w);
+    const picked = [];
+    for (const w of sorted) {
+      if (picked.length >= k) break;
+      if (picked.some(p => Math.abs(p.start - w.start) < w.dur * 0.9)) continue;
+      picked.push(w);
+    }
+    picked.sort((a, b) => a.start - b.start);
+    return picked;
+  });
+
+  // порядок вывода
+  let chosen = [];
+  if (o.order === 'chrono') {
+    chosen = perClipChosen.flat(); // по клипам и времени
+  } else {
+    // чередуем клипы (по умолчанию) — соседние куски из разных клипов
+    const idxs = new Array(nv).fill(0);
+    let clipOrder = [...Array(nv).keys()];
+    if (o.order === 'shuffle') clipOrder.sort(() => rand() - 0.5);
+    let left = perClipChosen.reduce((s, a) => s + a.length, 0);
+    while (chosen.length < left) {
+      let any = false;
+      for (const vi of clipOrder) {
+        if (idxs[vi] < perClipChosen[vi].length) { chosen.push(perClipChosen[vi][idxs[vi]++]); any = true; }
+      }
+      if (!any) break;
+    }
+  }
+
   chosen = chosen.slice(0, nSeg);
   const total = chosen.reduce((s, c) => s + c.dur, 0);
   return { segments: chosen, total, segDur };
@@ -408,8 +442,72 @@ async function makeReel() {
   }
 }
 
-$('#btn-make').addEventListener('click', makeReel);
+/* ---------------- пожелания / корректировки текстом ---------------- */
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 4500);
+}
+
+function parseWish(text) {
+  const t = ' ' + (text || '').toLowerCase().replace(/ё/g, 'е') + ' ';
+  const o = state.opts; const ch = [];
+  const num = ((t.match(/(\d{1,3})\s*сек/) || t.match(/\bна\s+(\d{1,3})\b/) || t.match(/\bсделай\s+(\d{1,3})\b/)) || [])[1];
+  if (num) { o.len = clampLen(+num); ch.push(`длина ${o.len} сек`); }
+  // длина кусков / динамика
+  if (/динамич|энерг|драйв|коротк|покороче|мельче|чаще\s*реж|рван/.test(t)) { o.cutStyle = 'fast'; ch.push('короткие динамичные куски'); }
+  else if (/споко|плавн|медлен|длинн|подольше|дольше|реже\s*реж|не\s*дерга|без\s*дерга/.test(t)) { o.cutStyle = 'calm'; ch.push('длиннее, спокойнее'); }
+  else if (/обычн|нормаль|средн/.test(t)) { o.cutStyle = 'normal'; ch.push('средние куски'); }
+  // порядок / распределение
+  if (/по\s*порядку|хронолог|последовательн/.test(t)) { o.order = 'chrono'; ch.push('по порядку'); }
+  if (/не\s*растяг|один\s*клип|растян|равномер|поровну|разнообраз|чередуй|переключай/.test(t)) { if (o.order === 'chrono') o.order = 'interleave'; else o.order = 'interleave'; ch.push('равномерно по клипам'); }
+  if (/перемеш|по-другому|по\s+другому|случайн|заново|друг(ой|ое)\s*вариант|ещ[е]\s*раз|обнови|переделай/.test(t)) { o.order = (o.order === 'chrono' ? 'chrono' : 'shuffle'); o.seed = (o.seed || 1) + 1 + Math.floor(Math.random() * 999); ch.push('другой вариант'); }
+  // биты
+  if (/без\s*бит|не\s*под\s*музык|без\s*ритм|ровно\s*по\s*времени/.test(t)) { o.beatSync = false; ch.push('без привязки к битам'); }
+  else if (/под\s*бит|под\s*ритм|в\s*ритм/.test(t)) { o.beatSync = true; ch.push('под ритм'); }
+  // формат
+  if (/вертикал|9\s*[:x]\s*16|reels|рилс|шортс|shorts|сторис|stories/.test(t)) { o.fmt = '9:16'; ch.push('вертикальный 9:16'); }
+  else if (/квадрат|1\s*[:x]\s*1/.test(t)) { o.fmt = '1:1'; ch.push('квадрат 1:1'); }
+  else if (/горизонт|16\s*[:x]\s*9|широкоформ/.test(t)) { o.fmt = '16:9'; ch.push('горизонт 16:9'); }
+  // качество
+  if (/качеств|1080|поч[её]тче|резче|четч/.test(t)) { o.q = 'hq'; ch.push('качество 1080p'); }
+  else if (/полегче|720|попроще/.test(t)) { o.q = 'fast'; ch.push('быстрый режим 720p'); }
+  return { changes: ch, matched: ch.length > 0 };
+}
+
+function applyWish(text) {
+  const res = parseWish(text);
+  if (!res.matched) {
+    toast('Не понял. Примеры: «больше динамики», «длиннее куски», «перемешать по-другому», «по порядку», «сделай 20 секунд», «без привязки к битам».');
+    return false;
+  }
+  toast('Применяю: ' + res.changes.join(', '));
+  syncOptChips();
+  return true;
+}
+
+// подсветить чипы под изменённые пожеланием опции
+function syncOptChips() {
+  const set = (sel, attr, val) => document.querySelectorAll(`${sel} .chip`).forEach(c => c.classList.toggle('active', c.dataset[attr] === String(val)));
+  set('#fmt-chips', 'fmt', state.opts.fmt);
+  set('#q-chips', 'q', state.opts.q);
+  document.querySelectorAll('#len-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.len === String(state.opts.len)));
+}
+
+$('#btn-make').addEventListener('click', () => makeReel());
 $('#btn-again').addEventListener('click', () => {
   $('#result-card').classList.add('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
+
+// пожелание до сборки
+$('#wish-apply') && $('#wish-apply').addEventListener('click', () => applyWish($('#wish-input').value));
+$('#wish-input') && $('#wish-input').addEventListener('keydown', e => { if (e.key === 'Enter') applyWish(e.target.value); });
+// корректировка после сборки — сразу пересобрать
+document.addEventListener('click', e => {
+  const chip = e.target.closest('[data-fix]');
+  if (chip) { if (applyWish(chip.dataset.fix)) makeReel(); }
+});
+$('#fix-apply') && $('#fix-apply').addEventListener('click', () => { if (applyWish($('#fix-input').value)) makeReel(); });
+$('#fix-input') && $('#fix-input').addEventListener('keydown', e => { if (e.key === 'Enter' && applyWish(e.target.value)) makeReel(); });

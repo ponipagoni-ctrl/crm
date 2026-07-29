@@ -69,4 +69,16 @@ body{
 
 .result video{width:100%;border-radius:12px;background:#000;margin-bottom:14px;max-height:70vh}
 .dl{margin-top:0}
+
+.wishrow{display:flex;gap:8px}
+.wishrow input{flex:1;min-width:0;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font-size:14px;font-family:inherit}
+.wishrow input::placeholder{color:#6b7299}
+.wishrow .chip{white-space:nowrap}
+.fixpanel{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  background:#2a2f49;color:#fff;padding:12px 16px;border-radius:12px;font-size:13.5px;max-width:90%;
+  box-shadow:0 10px 30px -8px #000;opacity:0;pointer-events:none;transition:.25s;z-index:50;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 .hidden{display:none!important}

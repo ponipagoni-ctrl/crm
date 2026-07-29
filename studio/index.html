@@ -80,6 +80,15 @@
           <span>🧠 Умный выбор моментов <span class="muted">(живые/динамичные куски вместо простой нарезки по порядку)</span></span>
         </label>
       </div>
+
+      <div class="opt">
+        <div class="opt-t">✏️ Пожелание к монтажу <span class="muted">(по желанию, словами)</span></div>
+        <div class="wishrow">
+          <input type="text" id="wish-input" placeholder="напр.: больше динамики, короче куски, 20 секунд">
+          <button class="chip" id="wish-apply">Применить</button>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Понимаю: «короче / длиннее куски», «больше динамики», «спокойнее», «перемешать по-другому», «по порядку», «равномерно по клипам», «без привязки к битам», «сделай N секунд», «вертикальный / квадрат / горизонт».</div>
+      </div>
     </section>
 
     <button id="btn-make" class="make" disabled>Собрать ролик 🎬</button>
@@ -98,7 +107,24 @@
       <div class="card-h"><h2>✅ Готово!</h2></div>
       <video id="result-video" controls playsinline></video>
       <a id="download" class="make dl" download="makeday-reel.mp4">⬇ Скачать ролик</a>
-      <button id="btn-again" class="chip" style="margin-top:10px">↺ Собрать заново</button>
+
+      <div class="fixpanel">
+        <div class="opt-t">✏️ Поправить и пересобрать <span class="muted">(из тех же клипов)</span></div>
+        <div class="chips">
+          <button class="chip" data-fix="больше динамики, короче куски">Больше динамики</button>
+          <button class="chip" data-fix="спокойнее, длиннее куски">Спокойнее</button>
+          <button class="chip" data-fix="равномерно по клипам">Равномернее</button>
+          <button class="chip" data-fix="перемешать по-другому">Перемешать</button>
+          <button class="chip" data-fix="по порядку">По порядку</button>
+          <button class="chip" data-fix="без привязки к битам">Без битов</button>
+        </div>
+        <div class="wishrow" style="margin-top:10px">
+          <input type="text" id="fix-input" placeholder="или напишите правку словами…">
+          <button class="chip" id="fix-apply">Применить</button>
+        </div>
+      </div>
+
+      <button id="btn-again" class="chip" style="margin-top:14px">↺ Начать заново (новые клипы)</button>
     </section>
   </main>
 
