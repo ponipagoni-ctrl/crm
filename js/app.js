@@ -12,6 +12,7 @@ const SERVICES = {
   foam:  { name: 'Пенная вечеринка',        emoji: '💦', color: '#06b6d4' },
   cotton:{ name: 'Выездная вата',           emoji: '🍬', color: '#f472b6' },
   combo: { name: 'Комбо',                   emoji: '🎉', color: '#ef4444' },
+  magic: { name: 'Фокусник',                emoji: '🎩', color: '#eab308' },
   other: { name: 'Другое',                  emoji: '✨', color: '#64748b' },
 };
 
