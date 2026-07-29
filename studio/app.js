@@ -281,18 +281,27 @@ function buildPlan() {
     if (!advanced) break; // все клипы исчерпаны
   }
 
-  // в каждом клипе выбираем want[vi] непересекающихся окон (лучшие по «живости»), внутри — по времени
+  // В каждом клипе делим таймлайн на want[vi] отрезков и в каждом берём САМЫЙ яркий
+  // момент. Так кадры покрывают весь исходник и не повторяются (нет скучивания
+  // на одном «горячем» месте).
   const spread = (o.seed && o.seed > 1) ? 0.3 : 0; // «перемешать» добавляет вариативности
   const perClipChosen = perClip.map((wins, vi) => {
-    const k = want[vi]; if (k <= 0) return [];
+    const k = want[vi]; if (k <= 0 || !wins.length) return [];
     const clipMax = wins.reduce((m, w) => Math.max(m, w.score), 0.0001);
-    const sorted = wins.map(w => ({ w, key: w.score + rand() * spread * clipMax }))
-      .sort((a, b) => b.key - a.key).map(x => x.w);
+    const keyed = wins.map(w => ({ w, key: w.score + rand() * spread * clipMax }));
+    if (k === 1) { const best = keyed.slice().sort((a, b) => b.key - a.key)[0]; return best ? [best.w] : []; }
+    const v = state.videos[vi];
+    const dur = v.duration || (wins[wins.length - 1].start + segDur);
+    const bucket = dur / k;
     const picked = [];
-    for (const w of sorted) {
-      if (picked.length >= k) break;
-      if (picked.some(p => Math.abs(p.start - w.start) < w.dur * 0.9)) continue;
-      picked.push(w);
+    for (let b = 0; b < k; b++) {
+      const lo = b * bucket, hi = (b + 1) * bucket;
+      let cand = keyed.filter(x => x.w.start >= lo - 0.001 && x.w.start < hi);
+      if (!cand.length) cand = keyed.filter(x => x.w.start >= lo - bucket * 0.5 && x.w.start < hi + bucket * 0.5);
+      if (!cand.length) continue;
+      cand.sort((a, b2) => b2.key - a.key);
+      const pick = cand.find(x => !picked.some(p => Math.abs(p.start - x.w.start) < x.w.dur * 0.9));
+      if (pick) picked.push(pick.w);
     }
     picked.sort((a, b) => a.start - b.start);
     return picked;
