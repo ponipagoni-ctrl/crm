@@ -20,12 +20,13 @@
     <section class="card">
       <div class="card-h"><span class="num">1</span><h2>Видео с праздника</h2></div>
       <label class="drop" id="drop-video">
-        <input type="file" id="in-video" accept="video/*" multiple hidden>
+        <input type="file" id="in-video" accept="video/*,.mov,.mp4,.m4v" multiple hidden>
         <div class="drop-in">
           <div class="drop-ico">🎞️</div>
-          <div>Нажмите, чтобы выбрать клипы<br><span class="muted">можно несколько сразу</span></div>
+          <div>Нажмите, чтобы выбрать клипы<br><span class="muted">можно несколько сразу · и добавлять частями</span></div>
         </div>
       </label>
+      <div id="video-hint" class="muted" style="font-size:12.5px;margin-top:8px"></div>
       <div id="video-list" class="thumbs"></div>
     </section>
 
@@ -33,7 +34,7 @@
     <section class="card">
       <div class="card-h"><span class="num">2</span><h2>Музыка</h2></div>
       <label class="drop small" id="drop-audio">
-        <input type="file" id="in-audio" accept="audio/*" hidden>
+        <input type="file" id="in-audio" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.caf" hidden>
         <div class="drop-in">
           <div class="drop-ico">🎵</div>
           <div id="audio-label">Выберите трек (mp3, m4a…)<br><span class="muted">под него подрежется ритм</span></div>

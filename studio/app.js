@@ -39,19 +39,47 @@ function dropZone(zone, input) {
   });
 }
 
-async function addVideos(files) {
-  for (const file of files) {
-    if (!file.type.startsWith('video')) continue;
-    const v = { file, duration: 0, motion: [], poster: null, ready: false, thumbEl: null };
+function addVideos(files) {
+  const vids = [...files].filter(f => f.type.startsWith('video') || /\.(mov|mp4|m4v|webm|avi|mkv)$/i.test(f.name));
+  for (const file of vids) {
+    // добавляем СРАЗУ (ролик уже можно использовать), анализ — в фоне
+    const v = { file, duration: 0, motion: [], poster: null, ready: true, analyzed: false, thumbEl: null };
     state.videos.push(v);
     renderThumb(v);
-    try { await analyzeVideo(v); }
-    catch (err) { console.warn('analyze fail', err); v.ready = true; /* всё равно можно использовать целиком */ }
-    v.thumbEl?.classList.remove('busy');
-    updateThumb(v);
-    refreshMakeBtn();
+    v.thumbEl.classList.remove('busy');
   }
+  updateVideoHint();
+  refreshMakeBtn();
+  runAnalysisQueue();
 }
+
+function updateVideoHint() {
+  const n = state.videos.length;
+  const hint = document.getElementById('video-hint');
+  if (hint) hint.textContent = n ? `Добавлено клипов: ${n}. Можно выбрать ещё — добавятся к списку.` : '';
+}
+
+let analyzing = false;
+async function runAnalysisQueue() {
+  if (analyzing) return;
+  analyzing = true;
+  try {
+    let v;
+    while ((v = state.videos.find(x => !x.analyzed))) {
+      v.analyzed = true;
+      v.thumbEl && v.thumbEl.classList.add('busy');
+      try { await withTimeout(analyzeVideo(v), 20000); }
+      catch (err) { console.warn('analyze fail', err); }
+      v.thumbEl && v.thumbEl.classList.remove('busy');
+      updateThumb(v);
+    }
+  } finally { analyzing = false; }
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
 function renderThumb(v) {
   const wrap = document.createElement('div');
@@ -59,7 +87,7 @@ function renderThumb(v) {
   wrap.innerHTML = `<canvas width="88" height="120"></canvas><span class="dur"></span>
     <button class="del" title="убрать">✕</button>`;
   wrap.querySelector('.del').addEventListener('click', () => {
-    state.videos = state.videos.filter(x => x !== v); wrap.remove(); refreshMakeBtn();
+    state.videos = state.videos.filter(x => x !== v); wrap.remove(); updateVideoHint(); refreshMakeBtn();
   });
   $('#video-list').appendChild(wrap);
   v.thumbEl = wrap;
@@ -99,7 +127,7 @@ async function analyzeVideo(v) {
   });
 
   if (duration > 0) {
-    const step = Math.min(0.5, Math.max(0.25, duration / 40));
+    const step = Math.min(1.0, Math.max(0.4, duration / 20)); // легче для телефона
     let prev = null, first = true;
     for (let t = 0; t < duration - 0.05; t += step) {
       await seek(t);
@@ -126,22 +154,31 @@ async function analyzeVideo(v) {
 $('#in-audio').addEventListener('change', e => { if (e.target.files[0]) setAudio(e.target.files[0]); e.target.value = ''; });
 
 async function setAudio(file) {
-  $('#audio-label').innerHTML = `🎵 <b>${file.name}</b><br><span class="muted">анализирую ритм…</span>`;
-  try {
-    const buf = await file.arrayBuffer();
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ac = new AC();
-    const audioBuf = await ac.decodeAudioData(buf.slice(0));
-    ac.close();
-    const beatInterval = detectBeatInterval(audioBuf);
-    state.audio = { file, duration: audioBuf.duration, beatInterval };
-    $('#audio-label').innerHTML = `🎵 <b>${file.name}</b><br><span class="muted">${audioBuf.duration.toFixed(0)} сек · темп ~${Math.round(60 / beatInterval)} уд/мин</span>`;
-  } catch (err) {
-    console.warn(err);
-    state.audio = { file, duration: 0, beatInterval: 0.5 };
-    $('#audio-label').innerHTML = `🎵 <b>${file.name}</b><br><span class="muted">ритм определить не удалось — нарежу равномерно</span>`;
-  }
+  // музыка считается «загруженной» СРАЗУ — не ждём разбор ритма (на iOS он может зависнуть)
+  state.audio = { file, duration: 0, beatInterval: 0.5 };
+  $('#audio-label').innerHTML = `🎵 <b>${esc(file.name)}</b><br><span class="muted">загружено · определяю ритм…</span>`;
   refreshMakeBtn();
+  try {
+    const info = await withTimeout(analyzeTempo(file), 12000);
+    state.audio.beatInterval = info.beatInterval;
+    state.audio.duration = info.duration;
+    $('#audio-label').innerHTML = `🎵 <b>${esc(file.name)}</b><br><span class="muted">${info.duration.toFixed(0)} сек · темп ~${Math.round(60 / info.beatInterval)} уд/мин</span>`;
+  } catch (err) {
+    console.warn('tempo fail', err);
+    // ритм не разобрали — не страшно, нарежем по ровной сетке
+    $('#audio-label').innerHTML = `🎵 <b>${esc(file.name)}</b><br><span class="muted">загружено · ритм по умолчанию</span>`;
+  }
+}
+
+async function analyzeTempo(file) {
+  const buf = await file.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error('no AudioContext');
+  const ac = new AC();
+  let audioBuf;
+  try { audioBuf = await ac.decodeAudioData(buf.slice(0)); }
+  finally { try { ac.close(); } catch (e) {} }
+  return { beatInterval: detectBeatInterval(audioBuf), duration: audioBuf.duration };
 }
 
 /* Оценка длины бита (сек) через автокорреляцию потока онсетов */
