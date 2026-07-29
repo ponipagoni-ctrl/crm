@@ -312,13 +312,18 @@ async function loadFFmpeg() {
   return ff;
 }
 
+const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+
 function vfFor(fmt, q) {
-  const dims = {
+  let [w, h] = {
     '9:16': q === 'hq' ? [1080, 1920] : [720, 1280],
     '1:1': q === 'hq' ? [1080, 1080] : [720, 720],
     '16:9': q === 'hq' ? [1920, 1080] : [1280, 720],
   }[fmt];
-  const [w, h] = dims;
+  if (IS_MOBILE) { // на телефоне ограничиваем разрешение ради памяти Safari
+    const cap = 960, m = Math.max(w, h);
+    if (m > cap) { const k = cap / m; w = Math.round(w * k / 2) * 2; h = Math.round(h * k / 2) * 2; }
+  }
   return `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30`;
 }
 
@@ -336,31 +341,39 @@ async function makeReel() {
     if (!plan.segments.length) throw new Error('Не из чего собирать — добавьте видео.');
     log(`Кусочков: ${plan.segments.length}, длина ~${plan.total.toFixed(1)} сек`);
 
-    await loadFFmpeg();
-
-    // записываем исходники (каждый файл один раз)
-    setBar(0.15, 'Готовлю исходники…');
-    const vname = {};
-    for (let i = 0; i < state.videos.length; i++) {
-      if (plan.segments.some(s => s.vi === i)) {
-        const n = `v${i}.mp4`;
-        await ff.writeFile(n, await fetchFile(state.videos[i].file));
-        vname[i] = n;
+    // предупреждение о памяти на телефоне
+    if (IS_MOBILE) {
+      const totalMB = state.videos.reduce((s, v) => s + v.file.size, 0) / 1048576;
+      if (state.videos.length > 6 || totalMB > 180) {
+        const ok = confirm(`На телефоне ${state.videos.length} клип(ов) (~${totalMB.toFixed(0)} МБ) могут переполнить память — страница может перезагрузиться.\n\nСовет: оставьте 3–5 коротких клипов, либо соберите на компьютере.\n\nВсё равно продолжить?`);
+        if (!ok) { $('#progress-card').classList.add('hidden'); $('#btn-make').disabled = false; return; }
       }
     }
-    const mus = 'music' + audioExt(state.audio.file.name);
-    await ff.writeFile(mus, await fetchFile(state.audio.file));
 
+    await loadFFmpeg();
+
+    // Нарезаем по одному исходнику: пишем клип → режем его куски → сразу удаляем.
+    // Так в памяти лежит только ОДИН исходник за раз (важно для Safari на iPhone).
     const vf = vfFor(state.opts.fmt, state.opts.q);
-    const parts = [];
-    for (let i = 0; i < plan.segments.length; i++) {
-      const s = plan.segments[i];
-      const out = `s${i}.mp4`;
-      setBar(0.15 + 0.6 * (i / plan.segments.length), `Нарезаю кусок ${i + 1} из ${plan.segments.length}…`);
-      await ff.exec(['-ss', s.start.toFixed(2), '-t', s.dur.toFixed(2), '-i', vname[s.vi],
-        '-vf', vf, '-an', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', out]);
-      parts.push(out);
+    const bySource = {};
+    plan.segments.forEach((s, idx) => { (bySource[s.vi] = bySource[s.vi] || []).push({ idx, s }); });
+    const partNames = new Array(plan.segments.length);
+    let processed = 0;
+    for (const viKey of Object.keys(bySource)) {
+      const vi = +viKey;
+      const src = 'src.mp4';
+      await ff.writeFile(src, await fetchFile(state.videos[vi].file));
+      for (const { idx, s } of bySource[vi]) {
+        const out = `s${idx}.mp4`;
+        setBar(0.15 + 0.6 * (processed / plan.segments.length), `Нарезаю кусок ${processed + 1} из ${plan.segments.length}…`);
+        await ff.exec(['-ss', s.start.toFixed(2), '-t', s.dur.toFixed(2), '-i', src,
+          '-vf', vf, '-an', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-r', '30', out]);
+        partNames[idx] = out;
+        processed++;
+      }
+      try { await ff.deleteFile(src); } catch (e) {}
     }
+    const parts = partNames.filter(Boolean);
 
     setBar(0.8, 'Склеиваю…');
     await ff.writeFile('list.txt', parts.map(f => `file '${f}'`).join('\n'));
@@ -368,6 +381,8 @@ async function makeReel() {
     for (const p of parts) { try { await ff.deleteFile(p); } catch (e) {} }
 
     setBar(0.9, 'Добавляю музыку…');
+    const mus = 'music' + audioExt(state.audio.file.name);
+    await ff.writeFile(mus, await fetchFile(state.audio.file));
     await ff.exec(['-i', 'silent.mp4', '-i', mus, '-map', '0:v:0', '-map', '1:a:0',
       '-t', plan.total.toFixed(2), '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-shortest', 'final.mp4']);
 
@@ -383,8 +398,7 @@ async function makeReel() {
     $('#result-card').scrollIntoView({ behavior: 'smooth' });
 
     // чистим память ffmpeg
-    for (const n of Object.values(vname)) { try { await ff.deleteFile(n); } catch (e) {} }
-    try { await ff.deleteFile('silent.mp4'); await ff.deleteFile(mus); } catch (e) {}
+    try { await ff.deleteFile('silent.mp4'); await ff.deleteFile(mus); await ff.deleteFile('list.txt'); } catch (e) {}
   } catch (err) {
     console.error(err);
     $('#stage').textContent = '⚠️ ' + (err.message || 'Не удалось собрать ролик');
