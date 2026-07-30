@@ -44,7 +44,7 @@ const MAIL_PRESETS = [
 ];
 
 /* ---------------- шаблоны ответов клиенту (копируются в 1 клик / по клавише) ---------------- */
-const REPLY_TEMPLATES = [
+const DEFAULT_TEMPLATES = [
   {
     id: 'doll', emoji: '🐻', title: 'Ростовая кукла (Мишка) — 3500 ₽',
     text: `Рады вашему интересу! 🐻 Стоимость поздравления от нашего Мишки — 3500 ₽.
@@ -124,6 +124,15 @@ const REPLY_TEMPLATES = [
     text: `Чтобы закрепить дату и время именно за вами, вносится небольшая предоплата, а остальное — уже в день праздника. Без брони дату не держим — в сезон хорошие даты и время разбирают быстро 🙌 Напишите удобные дату, время и адрес — подскажу, свободно ли, и забронируем.`,
   },
 ];
+
+/* шаблоны хранятся на устройстве, их можно добавлять/менять/удалять */
+const TPL_KEY = 'makeday_templates';
+function loadTemplatesData() {
+  try { const s = JSON.parse(localStorage.getItem(TPL_KEY)); if (Array.isArray(s)) return s; } catch (e) {}
+  return DEFAULT_TEMPLATES.map(t => ({ ...t }));
+}
+function saveTemplatesData() { try { localStorage.setItem(TPL_KEY, JSON.stringify(templatesData)); } catch (e) {} }
+let templatesData = loadTemplatesData();
 
 /* ---------------- state ---------------- */
 let state = { clients: [], deals: [], seeded: false };
@@ -312,7 +321,7 @@ function copyToClipboard(text) {
   });
 }
 function copyTemplate(id) {
-  const tpl = REPLY_TEMPLATES.find(t => t.id === id);
+  const tpl = templatesData.find(t => t.id === id);
   if (!tpl) return;
   copyToClipboard(tpl.text)
     .then(() => toast(`✅ «${tpl.title}» скопирован — вставьте в чат (Ctrl/⌘+V)`, 'success'))
@@ -323,15 +332,76 @@ function copyTemplate(id) {
 function renderTemplates() {
   const box = document.getElementById('reply-templates');
   if (!box) return;
-  box.innerHTML = REPLY_TEMPLATES.map((t, i) => `
-    <div class="tpl-card" data-tid="${t.id}" title="Нажмите, чтобы скопировать">
+  box.innerHTML = templatesData.map((t, i) => `
+    <div class="tpl-card" data-tid="${t.id}" title="Нажмите, чтобы прочитать целиком">
       <div class="tpl-head">
         ${i < 9 ? `<span class="tpl-key">${i + 1}</span>` : '<span class="tpl-key none"></span>'}
-        <span class="tpl-title">${t.emoji} ${esc(t.title)}</span>
-        <span class="btn btn-sm tpl-copy">📋 Копировать</span>
+        <span class="tpl-title">${esc(t.emoji || '💬')} ${esc(t.title)}</span>
+        <span class="btn btn-sm tpl-copy" data-copytpl="${esc(t.id)}">📋 Копировать</span>
       </div>
       <div class="tpl-text">${esc(t.text)}</div>
-    </div>`).join('');
+    </div>`).join('') || '<div class="list-empty">Шаблонов пока нет — нажмите «Добавить шаблон».</div>';
+}
+
+/* открыть шаблон целиком */
+function openTemplateView(id) {
+  const t = templatesData.find(x => x.id === id);
+  if (!t) return;
+  openModal(`
+    <div class="modal-head"><h2>${esc(t.emoji || '💬')} ${esc(t.title)}</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="tpl-full">${esc(t.text)}</div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteTemplate('${esc(t.id)}')">Удалить</button>
+      <button class="btn" onclick="openTemplateForm('${esc(t.id)}')">✏️ Редактировать</button>
+      <button class="btn btn-primary" onclick="copyTemplate('${esc(t.id)}');closeModal()">📋 Копировать</button>
+    </div>`);
+}
+
+/* форма добавления/редактирования */
+function openTemplateForm(id) {
+  const t = id ? templatesData.find(x => x.id === id) : null;
+  openModal(`
+    <div class="modal-head"><h2>${t ? '✏️ Редактировать шаблон' : '➕ Новый шаблон'}</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="field" style="max-width:90px"><label>Значок</label>
+          <input id="tf-emoji" type="text" maxlength="4" placeholder="🐻" value="${esc(t?.emoji || '')}"></div>
+        <div class="field"><label>Название *</label>
+          <input id="tf-title" type="text" placeholder="Напр.: Вата — цены" value="${esc(t?.title || '')}"></div>
+      </div>
+      <div class="field"><label>Текст сообщения *</label>
+        <textarea id="tf-text" rows="10" placeholder="Текст, который будете копировать клиенту…">${esc(t?.text || '')}</textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTemplateForm('${t ? esc(t.id) : ''}')">Сохранить</button>
+    </div>`);
+  setTimeout(() => { const el = document.getElementById('tf-title'); if (el) el.focus(); }, 50);
+}
+function saveTemplateForm(id) {
+  const title = document.getElementById('tf-title').value.trim();
+  const text = document.getElementById('tf-text').value.trim();
+  const emoji = document.getElementById('tf-emoji').value.trim() || '💬';
+  if (!title || !text) { toast('Заполните название и текст', 'error'); return; }
+  if (id) {
+    const t = templatesData.find(x => x.id === id);
+    if (t) Object.assign(t, { title, text, emoji });
+    toast('Шаблон обновлён', 'success');
+  } else {
+    templatesData.push({ id: uid(), emoji, title, text });
+    toast('Шаблон добавлен', 'success');
+  }
+  saveTemplatesData(); closeModal(); renderTemplates();
+}
+function deleteTemplate(id) {
+  const t = templatesData.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm(`Удалить шаблон «${t.title}»?`)) return;
+  templatesData = templatesData.filter(x => x.id !== id);
+  saveTemplatesData(); closeModal(); renderTemplates();
+  toast('Шаблон удалён');
 }
 
 function renderBadges() {
@@ -2315,19 +2385,24 @@ function bindEvents() {
   // единый обработчик кнопок мессенджеров (WhatsApp/Telegram/MAX)
   document.addEventListener('click', handleMsgButtonClick);
 
-  // шаблоны ответов: клик по карточке копирует
+  // шаблоны ответов: «Копировать» копирует, клик по карточке открывает целиком
   const tplBox = document.getElementById('reply-templates');
   if (tplBox) tplBox.addEventListener('click', e => {
+    const copyBtn = e.target.closest('[data-copytpl]');
+    if (copyBtn) { copyTemplate(copyBtn.dataset.copytpl); return; }
     const card = e.target.closest('.tpl-card');
-    if (card) copyTemplate(card.dataset.tid);
+    if (card) openTemplateView(card.dataset.tid);
   });
+  const tplAdd = document.getElementById('tpl-add');
+  if (tplAdd) tplAdd.addEventListener('click', () => openTemplateForm());
   // горячие клавиши 1–9 копируют шаблон, когда открыт раздел «Рассылка»
   document.addEventListener('keydown', e => {
     if (currentView !== 'mailing' || e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = (document.activeElement && document.activeElement.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (document.getElementById('modal-root').innerHTML) return; // не мешать модалке
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= Math.min(9, REPLY_TEMPLATES.length)) { e.preventDefault(); copyTemplate(REPLY_TEMPLATES[n - 1].id); }
+    if (n >= 1 && n <= Math.min(9, templatesData.length)) { e.preventDefault(); copyTemplate(templatesData[n - 1].id); }
   });
 
   // статистика
