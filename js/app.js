@@ -451,8 +451,8 @@ function autoReminders() {
   const tomorrow = `${tmr.getFullYear()}-${String(tmr.getMonth() + 1).padStart(2, '0')}-${String(tmr.getDate()).padStart(2, '0')}`;
   const items = [];
 
-  // заказы сегодня
-  state.deals.filter(d => d.date === today && d.stage !== 'cancelled')
+  // заказы сегодня (выполненные и отменённые не показываем — их делать уже не надо)
+  state.deals.filter(d => d.date === today && d.stage !== 'cancelled' && d.stage !== 'done')
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     .forEach(d => {
       const s = SERVICES[d.service] || SERVICES.other;
@@ -1733,7 +1733,7 @@ function handleMsgButtonClick(e) {
 }
 
 /* ================= ПОВТОРНЫЕ ПРОДАЖИ ================= */
-const REPEAT_BDAY_DAYS = 21;   // за сколько дней до ДР ребёнка напоминать
+const REPEAT_BDAY_DAYS = 30;   // за сколько дней до ДР ребёнка напоминать (заранее, чтобы успеть)
 const REPEAT_LATER_SNOOZE = 7; // «напомнить позже» — через сколько дней вернуть в список
 
 /* имена детей из заметок: «Дети: Мирон 8, Тима 5» / «Миша 8 (футбол)» → «Мирон и Тима» */
@@ -1780,12 +1780,16 @@ function repeatOpportunities(includeHandled = false) {
     const deals = clientDeals(c.id).filter(d => d.stage === 'done');
     const opps = [];
 
-    // A) ДР ребёнка / праздник — в ближайшие 3 недели
+    // A) ДР ребёнка / праздник — в ближайший месяц
     for (const h of (c.holidays || [])) {
       const occ = nextOccurrence(h);
       if (!occ) continue;
       const du = daysUntil(occ);
       if (du === null || du < 0 || du > REPEAT_BDAY_DAYS) continue;
+      // клиент уже заказывал ПОД ЭТО событие (есть выполненный заказ рядом с датой праздника) —
+      // значит это не «повтор», а свежий/текущий заказ: не показываем
+      const occMs = occ.getTime();
+      if (deals.some(d => { const dd = parseISO(d.date); if (!dd) return false; const diff = (occMs - dd.getTime()) / 86400000; return diff >= -7 && diff <= 60; })) continue;
       if (/новый год|дм|снегур/i.test(h.title) && !isSellingSeasonNY()) continue;
       const isNY = /новый год|дм|снегур/i.test(h.title);
       opps.push({
