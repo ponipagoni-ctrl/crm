@@ -450,13 +450,13 @@ footer a:hover { text-decoration: underline; }
         <div class="ch-main">🏙️ Екатеринбург</div><div class="ch-price">без доплаты</div>
       </button>
       <button class="choice-btn zone-btn" onclick="pickZone('z1',this)">
-        <div class="ch-main">До 20 км</div><div class="ch-sub">В. Пышма, Берёзовский, Арамиль</div><div class="ch-price">+1 000 ₽</div>
+        <div class="ch-main">До 20 км</div><div class="ch-sub">В. Пышма, Берёзовский, Арамиль</div><div class="ch-price">+2 000 ₽</div>
       </button>
       <button class="choice-btn zone-btn" onclick="pickZone('z2',this)">
-        <div class="ch-main">20–35 км</div><div class="ch-sub">Среднеуральск, Сысерть, Полевской</div><div class="ch-price">+2 000 ₽</div>
+        <div class="ch-main">20–35 км</div><div class="ch-sub">Среднеуральск, Сысерть, Полевской</div><div class="ch-price">+3 000 ₽</div>
       </button>
       <button class="choice-btn zone-btn" onclick="pickZone('z3',this)">
-        <div class="ch-main">35–50 км</div><div class="ch-sub">Первоуральск, Ревда</div><div class="ch-price">+3 000 ₽</div>
+        <div class="ch-main">35–50 км</div><div class="ch-sub">Первоуральск, Ревда</div><div class="ch-price">+5 000 ₽</div>
       </button>
       <button class="choice-btn zone-btn" onclick="pickZone('far',this)">
         <div class="ch-main">Дальше 50 км</div><div class="ch-price">по договорённости</div>
@@ -534,15 +534,15 @@ const SLOTS = { m:'до 16:00', e:'16:00–22:00', n:'после 22:00 ★' };
 // Фиксированная доплата за выезд, ₽ (null — по договорённости)
 const ZONES = {
   city: { name:'Екатеринбург', add:0 },
-  z1:   { name:'до 20 км от города', add:1000 },
-  z2:   { name:'20–35 км от города', add:2000 },
-  z3:   { name:'35–50 км от города', add:3000 },
+  z1:   { name:'до 20 км от города', add:2000 },
+  z2:   { name:'20–35 км от города', add:3000 },
+  z3:   { name:'35–50 км от города', add:5000 },
   far:  { name:'дальше 50 км от города', add:null }
 };
 const FMT_NAMES = { home:'Поздравление на дом', corp:'Корпоратив', mass:'Массовый праздник' };
 const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
-// Чат для брони: можно заменить на 'https://t.me/username'
-const TG_LINK = 'https://t.me/+79090175865';
+// Чат для брони
+const TG_LINK = 'https://t.me/marsssellin';
 
 /* ─── State ─────────────────────────────────────────────────────── */
 let S = { pair:null, tier:null, fmt:null, period:null, slot:'m', zone:'city', ready:false, message:'' };
