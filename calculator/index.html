@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дед Мороз и Снегурочка Екатеринбург — Калькулятор цен</title>
+<style>
+:root {
+  --blue-deep: #071828;
+  --blue-dark: #0d2640;
+  --blue-mid: #1a3a5c;
+  --blue-light: #2d6a9f;
+  --gold: #d4a843;
+  --gold-light: #f0c455;
+  --red: #c0392b;
+  --white: #ffffff;
+  --text-muted: rgba(255,255,255,0.65);
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(160deg, var(--blue-deep) 0%, var(--blue-mid) 60%, var(--blue-dark) 100%);
+  min-height: 100vh;
+  color: var(--white);
+  overflow-x: hidden;
+}
+
+/* ── Snowflakes ── */
+#snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.sf { position: absolute; top: -20px; opacity: .6; animation: fall linear infinite; user-select: none; }
+@keyframes fall { to { transform: translateY(105vh) rotate(360deg); } }
+
+/* ── Header ── */
+header {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 56px 24px 36px;
+  background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, transparent 100%);
+}
+.logo-line { font-size: 2.8em; margin-bottom: 8px; }
+header h1 {
+  font-size: clamp(1.6em, 4vw, 2.5em);
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(212,168,67,.5);
+  margin-bottom: 8px;
+  letter-spacing: -.5px;
+}
+header p { color: var(--text-muted); font-size: 1em; }
+.header-badges {
+  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px;
+}
+.badge {
+  padding: 5px 14px; border-radius: 20px; font-size: .8em; font-weight: 600;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+}
+.badge.gold { border-color: var(--gold); color: var(--gold); }
+
+/* ── Layout ── */
+.wrap { max-width: 820px; margin: 0 auto; padding: 0 16px 80px; position: relative; z-index: 1; }
+
+/* ── Card ── */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 26px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(12px);
+  transition: border-color .3s;
+}
+.card.active-step { border-color: rgba(212,168,67,.4); }
+
+.step-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+  font-size: 1.1em; font-weight: 700; color: var(--gold);
+}
+.step-num {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--gold); color: var(--blue-deep);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85em; font-weight: 800; flex-shrink: 0;
+}
+
+/* ── Pairs ── */
+.pairs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.pair-card {
+  border: 2px solid rgba(255,255,255,.18);
+  border-radius: 14px; padding: 18px 12px;
+  text-align: center; cursor: pointer;
+  transition: all .25s;
+  background: rgba(255,255,255,.03);
+}
+.pair-card:hover { border-color: var(--gold); background: rgba(212,168,67,.08); }
+.pair-card.sel { border-color: var(--gold); background: rgba(212,168,67,.15); box-shadow: 0 0 22px rgba(212,168,67,.25); }
+.pair-avatar {
+  width: 76px; height: 76px; border-radius: 50%;
+  margin: 0 auto 12px; overflow: hidden;
+  background: rgba(255,255,255,.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2em;
+  border: 2px solid rgba(255,255,255,.15);
+}
+.pair-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pair-title { font-weight: 700; font-size: .9em; margin-bottom: 3px; }
+.pair-sub { font-size: .78em; color: var(--text-muted); margin-bottom: 8px; }
+.pill {
+  display: inline-block; padding: 3px 11px;
+  border-radius: 20px; font-size: .73em; font-weight: 700;
+}
+.pill-std { background: rgba(45,106,159,.5); color: #9dd4f5; }
+.pill-vip { background: rgba(212,168,67,.3); color: var(--gold); }
+
+/* ── Format ── */
+.format-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.fmt-btn {
+  border: 2px solid rgba(255,255,255,.18); border-radius: 12px;
+  padding: 18px 8px; text-align: center; cursor: pointer;
+  background: rgba(255,255,255,.03); color: var(--white);
+  transition: all .25s;
+}
+.fmt-btn:hover, .fmt-btn.sel {
+  border-color: var(--gold); background: rgba(212,168,67,.12);
+}
+.fmt-icon { font-size: 2em; margin-bottom: 8px; }
+.fmt-name { font-weight: 700; font-size: .9em; }
+.fmt-from { font-size: .78em; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Date ── */
+.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 520px) { .date-row { grid-template-columns: 1fr; } }
+.field-label { font-size: .85em; color: var(--text-muted); margin-bottom: 7px; }
+input[type="date"], select {
+  width: 100%; padding: 11px 14px;
+  background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 9px; color: var(--white);
+  font-size: .95em; outline: none;
+  transition: border-color .25s;
+  -webkit-appearance: none;
+}
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.6); }
+input[type="date"]:focus, select:focus { border-color: var(--gold); }
+select option { background: #0d2640; }
+.hidden { display: none !important; }
+.town-btn {
+  padding: 6px 12px; border-radius: 20px; font-size: .78em; font-weight: 600;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06);
+  color: var(--white); cursor: pointer; transition: all .2s;
+}
+.town-btn:hover, .town-btn.active { border-color: var(--gold); background: rgba(212,168,67,.18); color: var(--gold); }
+input[type="number"]::-webkit-inner-spin-button { opacity: .5; }
+
+/* ── Location ── */
+.loc-toggle { display: flex; gap: 10px; margin-bottom: 14px; }
+.loc-btn {
+  flex: 1; padding: 11px;
+  border: 2px solid rgba(255,255,255,.18);
+  border-radius: 9px; background: transparent;
+  color: var(--white); cursor: pointer;
+  font-size: .9em; font-weight: 600; transition: all .25s;
+}
+.loc-btn.active { border-color: var(--gold); background: rgba(212,168,67,.15); }
+
+/* ── Price result ── */
+#priceResult {
+  display: none;
+  background: linear-gradient(135deg, rgba(212,168,67,.18) 0%, rgba(13,38,64,.6) 100%);
+  border: 2px solid var(--gold);
+  border-radius: 18px; padding: 30px;
+  text-align: center; margin-top: 8px;
+  animation: slideUp .45s ease;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.price-lbl { font-size: .9em; color: var(--text-muted); margin-bottom: 6px; }
+.price-big {
+  font-size: clamp(2.2em, 7vw, 3.2em);
+  font-weight: 900; color: var(--gold);
+  text-shadow: 0 0 24px rgba(212,168,67,.5);
+  line-height: 1;
+}
+.price-note { font-size: .82em; color: var(--text-muted); margin-top: 6px; }
+.breakdown {
+  margin: 18px 0 0;
+  background: rgba(0,0,0,.22); border-radius: 10px; padding: 14px;
+  text-align: left;
+}
+.brow {
+  display: flex; justify-content: space-between;
+  padding: 6px 0; font-size: .85em;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.brow:last-child { border-bottom: none; font-weight: 700; color: var(--gold); font-size: .95em; }
+.brow-note { color: var(--text-muted); }
+.cta-wrap { margin-top: 22px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 15px 36px; background: var(--gold);
+  color: var(--blue-deep); font-size: 1.05em; font-weight: 800;
+  border-radius: 30px; text-decoration: none;
+  transition: all .25s; cursor: pointer; border: none;
+}
+.btn-primary:hover { background: var(--gold-light); transform: scale(1.04); box-shadow: 0 8px 28px rgba(212,168,67,.4); }
+.btn-sec {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 15px 28px; background: transparent;
+  border: 2px solid rgba(255,255,255,.3); color: var(--white);
+  font-size: 1em; font-weight: 600; border-radius: 30px;
+  text-decoration: none; transition: all .25s;
+}
+.btn-sec:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Divider ── */
+.divider {
+  text-align: center; margin: 40px 0 24px;
+  font-size: 1.5em; font-weight: 800; color: var(--gold);
+  letter-spacing: -.5px;
+}
+.divider span { display: block; font-size: .5em; color: var(--text-muted); font-weight: 400; margin-top: 4px; }
+
+/* ── Calendar / Schedule ── */
+.schedule-grid { display: flex; flex-direction: column; gap: 14px; }
+.sched-card {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 14px; overflow: hidden;
+}
+.sched-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  background: rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--card-border);
+}
+.sched-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3em; flex-shrink: 0; overflow: hidden;
+}
+.sched-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sched-name { font-weight: 700; font-size: .95em; }
+.sched-desc { font-size: .78em; color: var(--text-muted); }
+.sched-badge { margin-left: auto; }
+
+/* Mini calendar grid */
+.mini-cal { padding: 16px 20px; }
+.mc-month { font-size: .8em; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.mc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px; font-size: .78em;
+}
+.mc-hd { text-align: center; color: var(--text-muted); font-weight: 600; padding: 3px 0; }
+.mc-day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; cursor: default; font-size: .88em; transition: .15s;
+  position: relative;
+}
+.mc-empty { background: transparent; }
+.mc-free { background: rgba(39,174,96,.25); color: #7fffa0; }
+.mc-busy { background: rgba(192,57,43,.3); color: #ff8a7a; text-decoration: line-through; }
+.mc-partial { background: rgba(212,168,67,.25); color: var(--gold); }
+.mc-legend { display: flex; gap: 14px; margin-top: 10px; font-size: .75em; }
+.leg { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+.leg-free { background: rgba(39,174,96,.5); }
+.leg-busy { background: rgba(192,57,43,.5); }
+.leg-partial { background: rgba(212,168,67,.4); }
+
+.gcal-embed { padding: 0 20px 16px; }
+.gcal-embed iframe { border-radius: 10px; width: 100%; border: 0; }
+.pending-box {
+  margin: 12px 20px 20px;
+  padding: 24px; text-align: center;
+  background: rgba(255,255,255,.04); border-radius: 10px;
+  color: var(--text-muted); font-size: .88em;
+}
+
+/* ── Footer ── */
+footer {
+  position: relative; z-index: 1;
+  text-align: center; padding: 32px 20px 48px;
+  color: var(--text-muted); font-size: .85em;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+footer a { color: var(--gold); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Responsive ── */
+@media (max-width: 540px) {
+  .pairs-grid { grid-template-columns: 1fr; }
+  .format-grid { grid-template-columns: 1fr; }
+  header { padding: 40px 16px 28px; }
+  .card { padding: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Snow -->
+<div id="snow"></div>
+
+<!-- Header -->
+<header>
+  <div class="logo-line">🎅 ❄️ 🎄</div>
+  <h1>Дед Мороз и Снегурочка в Екатеринбурге</h1>
+  <p>Рассчитайте стоимость за 2 минуты</p>
+  <div class="header-badges">
+    <span class="badge">🏙️ Екатеринбург и область</span>
+    <span class="badge">🎭 Корпоративы, дом, площадки</span>
+    <span class="badge gold">✦ 3 пары Дед Мороза</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1: Pair -->
+  <div class="card" id="s1">
+    <div class="step-head"><div class="step-num">1</div> Выберите пару</div>
+    <div class="pairs-grid">
+
+      <div class="pair-card" onclick="pickPair('std1',this)" data-tier="standard">
+        <div class="pair-avatar" id="av_std1">🎅</div>
+        <div class="pair-title">Пара 1</div>
+        <span class="pill pill-std">Стандарт</span>
+      </div>
+
+      <div class="pair-card" onclick="pickPair('std2',this)" data-tier="standard">
+        <div class="pair-avatar" id="av_std2">🎅</div>
+        <div class="pair-title">Пара 2</div>
+        <span class="pill pill-std">Стандарт</span>
+      </div>
+
+      <div class="pair-card" onclick="pickPair('vip',this)" data-tier="vip">
+        <div class="pair-avatar" id="av_vip">🎅</div>
+        <div class="pair-title">Пара 3</div>
+        <span class="pill pill-vip">★</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 2: Format -->
+  <div class="card" id="s2">
+    <div class="step-head"><div class="step-num">2</div> Формат праздника</div>
+    <div class="format-grid">
+
+      <button class="fmt-btn" onclick="pickFormat('home',this)">
+        <div class="fmt-icon">🏠</div>
+        <div class="fmt-name">Поздравление на дом</div>
+        <div class="fmt-from" id="fp_home">от 5 000 ₽</div>
+      </button>
+
+      <button class="fmt-btn" onclick="pickFormat('corp',this)">
+        <div class="fmt-icon">🏢</div>
+        <div class="fmt-name">Корпоратив</div>
+        <div class="fmt-from" id="fp_corp">от 15 000 ₽</div>
+      </button>
+
+      <button class="fmt-btn" onclick="pickFormat('mass',this)">
+        <div class="fmt-icon">🎭</div>
+        <div class="fmt-name">Массовый праздник</div>
+        <div class="fmt-from" id="fp_mass">от 10 чел. · площадка</div>
+      </button>
+
+    </div>
+
+    <!-- Описание программы — раскрывается при выборе формата -->
+    <div id="fmtDescPanel" style="display:none;margin-top:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px 18px;font-size:.88em;line-height:1.65;color:rgba(255,255,255,.88)"></div>
+
+  </div>
+
+  <!-- STEP 3: Date & Time -->
+  <div class="card" id="s3">
+    <div class="step-head"><div class="step-num">3</div> Дата и время</div>
+    <div class="date-row">
+      <div>
+        <div class="field-label">Выберите дату</div>
+        <input type="date" id="dateIn" min="2026-12-01" max="2027-01-10" onchange="onDate()">
+      </div>
+      <div id="timeWrap" class="hidden">
+        <div class="field-label">Время визита 31 декабря</div>
+        <select id="timeSlot" onchange="calc()">
+          <option value="morning">До 16:00 — дневное время</option>
+          <option value="evening">16:00 – 22:00 — вечернее</option>
+          <option value="night">После 22:00 — бой курантов ★</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Location -->
+  <div class="card" id="s4">
+    <div class="step-head"><div class="step-num">4</div> Местоположение</div>
+    <div class="loc-toggle">
+      <button class="loc-btn active" id="lbCity" onclick="setLoc('city')">🏙️ Екатеринбург</button>
+      <button class="loc-btn" id="lbOut" onclick="setLoc('outside')">🌲 За городом</button>
+    </div>
+    <div id="kmWrap" class="hidden">
+      <div class="field-label">Расстояние от центра Екатеринбурга</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="number" id="kmIn" min="1" max="200" placeholder="км"
+          oninput="calc()" onchange="calc()"
+          style="width:100px;padding:10px 12px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.25);border-radius:9px;color:white;font-size:1em;outline:none">
+        <span style="color:var(--text-muted);font-size:.9em">км от пл. 1905 года</span>
+        <span id="surchargeTag" style="margin-left:auto;font-weight:700;color:var(--gold);font-size:.95em"></span>
+      </div>
+      <div style="margin-bottom:6px">
+        <div class="field-label" style="margin-bottom:6px">Быстрый выбор населённого пункта:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px" id="townBtns">
+          <button class="town-btn" onclick="setKm(15)">В. Пышма · 15 км</button>
+          <button class="town-btn" onclick="setKm(20)">Берёзовский · 20 км</button>
+          <button class="town-btn" onclick="setKm(18)">Арамиль · 18 км</button>
+          <button class="town-btn" onclick="setKm(25)">Среднеуральск · 25 км</button>
+          <button class="town-btn" onclick="setKm(30)">Сысерть · 30 км</button>
+          <button class="town-btn" onclick="setKm(35)">Полевской · 35 км</button>
+          <button class="town-btn" onclick="setKm(45)">Первоуральск · 45 км</button>
+          <button class="town-btn" onclick="setKm(50)">Ревда · 50 км</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Price Result -->
+  <div id="priceResult">
+    <div class="price-lbl">Стоимость вашего праздника</div>
+    <div class="price-big" id="priceNum">0 ₽</div>
+    <div class="price-note" id="priceNote"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <div class="cta-wrap">
+      <a href="https://vk.com/makedayekb" target="_blank" class="btn-primary">🎅 Забронировать дату</a>
+    </div>
+    <div style="margin-top:16px;font-size:.95em;color:rgba(255,255,255,.75);letter-spacing:.3px">
+      📞 <a href="tel:+79090175865" style="color:var(--gold);text-decoration:none;font-weight:700">+7 (909) 017-58-65</a>
+    </div>
+  </div>
+
+
+</div><!-- /wrap -->
+
+<footer>
+  <p>© 2026 Дед Мороз и Снегурочка в Екатеринбурге</p>
+  <p style="margin-top:8px">
+    <a href="https://vk.com/makedayekb" target="_blank">ВКонтакте</a> &nbsp;·&nbsp;
+    <a href="tel:+79090175865">+7 (909) 017-58-65</a>
+  </p>
+</footer>
+
+<script>
+/* ─── Pricing table ─────────────────────────────────────────────── */
+const P = {
+  standard: {
+    home:  { t1:5000,  t2:7000,  t3:10000, d31m:13000, d31e:15000, d31n:18000, jan:7000  },
+    corp:  { t1:15000, t2:18000, t3:22000, d31m:28000, d31e:33000, d31n:40000, jan:18000 },
+    mass:  { t1:25000, t2:28000, t3:32000, d31m:38000, d31e:45000, d31n:55000, jan:28000 }
+  },
+  vip: {
+    home:  { t1:8000,  t2:12000, t3:16000, d31m:20000, d31e:25000, d31n:30000, jan:12000 },
+    corp:  { t1:25000, t2:30000, t3:36000, d31m:42000, d31e:50000, d31n:60000, jan:30000 },
+    mass:  { t1:40000, t2:56000, t3:64000, d31m:75000, d31e:90000, d31n:108000, jan:56000 }
+  }
+};
+/*
+  Tier key:
+    t1   = до 20 декабря (1–19 дек)
+    t2   = 20–27 декабря
+    t3   = 28–30 декабря
+    d31m = 31 декабря до 16:00
+    d31e = 31 декабря 16:00–22:00
+    d31n = 31 декабря после 22:00 (бой курантов)
+    jan  = январь (= t2)
+  Надбавка за выезд: ceil(km/10) × 10% от суммы заказа
+*/
+
+/* ─── State ─────────────────────────────────────────────────────── */
+let S = { pair:null, tier:null, fmt:null, date:null, slot:'morning', loc:'city', km:10 };
+
+/* ─── Pair ──────────────────────────────────────────────────────── */
+function pickPair(id, el) {
+  S.pair = id;
+  S.tier = el.dataset.tier; // 'standard' | 'vip'
+  document.querySelectorAll('.pair-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  updateFormatHints();
+  calc();
+}
+
+/* ─── Format descriptions ───────────────────────────────────────── */
+const FMT_DESC = {
+  home: `<strong>🏠 Поздравление на дом</strong><br>
+Дед Мороз и Снегурочка приходят прямо к вам — с интерактивной программой, играми и сюрпризами
+специально для ваших детей. Программа построена на вовлечении: ребята не просто смотрят,
+а участвуют сами. В конце — вручение подарков и общее фото на память.<br><br>
+<span style="color:var(--text-muted)">⏱ Продолжительность: 30 минут · 2 персонажа</span>`,
+
+  corp: `<strong>🏢 Корпоративная программа</strong><br>
+Живая программа для взрослой аудитории — с современным форматом, командными играми, танцами
+и хороводом. Дед Мороз и Снегурочка легко находят общий язык с любым коллективом и создают
+настоящую праздничную атмосферу. Программа адаптируется под вашу компанию.<br><br>
+<span style="color:var(--text-muted)">⏱ Продолжительность: 30 минут · 2 персонажа</span>`,
+
+  mass: `<strong>🎭 Три персонажа — двойной заряд энергии</strong><br>
+Дед Мороз, Снегурочка и Гринч (или ростовая кукла) ведут праздник на большой площадке.
+Программа разработана для групп от 10 человек — детских садов, школьных дворов, ресторанов
+и корпоративных ёлок.<br><br>
+<strong>🎶 Программа «Зимние причуды»</strong><br>
+Хоровод «Ниточка» с народными движениями и рукопожатиями. Танец «Беленький снежок» — все вместе
+двигаемся в такт. Командная игра «Рассыпуха-Собируха» — пары соревнуются в ловкости. Финальный
+хоровод, общее фото и пожелания.<br><br>
+<span style="color:var(--text-muted)">⏱ Продолжительность: 40 минут · 3 персонажа · площадки от 10 чел.</span>`
+};
+
+/* ─── Format ────────────────────────────────────────────────────── */
+function pickFormat(f, el) {
+  S.fmt = f;
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  const panel = document.getElementById('fmtDescPanel');
+  panel.innerHTML = FMT_DESC[f];
+  panel.style.display = 'block';
+  refreshTimeWrap();
+  calc();
+}
+
+/* ─── Date ──────────────────────────────────────────────────────── */
+function onDate() {
+  const v = document.getElementById('dateIn').value;
+  S.date = v || null;
+  const is31 = v && v.endsWith('-12-31');
+  document.getElementById('timeWrap').classList.toggle('hidden', !is31);
+  calc();
+}
+
+// Alias called when format changes — re-evaluate time slot visibility
+function refreshTimeWrap() {
+  const v = document.getElementById('dateIn').value;
+  const is31 = v && v.endsWith('-12-31');
+  document.getElementById('timeWrap').classList.toggle('hidden', !is31);
+}
+
+/* ─── Location ──────────────────────────────────────────────────── */
+function setLoc(l) {
+  S.loc = l;
+  document.getElementById('lbCity').classList.toggle('active', l==='city');
+  document.getElementById('lbOut').classList.toggle('active', l==='outside');
+  document.getElementById('kmWrap').classList.toggle('hidden', l==='city');
+  calc();
+}
+
+/* ─── Helpers ───────────────────────────────────────────────────── */
+function parseDateStr(s) {
+  // s = 'YYYY-MM-DD' — parse without timezone offset issues
+  const [y,m,d] = s.split('-').map(Number);
+  return { year:y, month:m, day:d };
+}
+
+function getDateTier(month, day, isJan) {
+  if (isJan) return 'jan';
+  if (day <= 19) return 't1';
+  if (day <= 27) return 't2';
+  if (day <= 30) return 't3';
+  return 'dec31'; // day === 31
+}
+
+function rub(n) { return n.toLocaleString('ru-RU') + ' ₽'; }
+
+/* ─── Main calc ─────────────────────────────────────────────────── */
+function calc() {
+  if (!S.pair || !S.fmt || !S.date) {
+    document.getElementById('priceResult').style.display = 'none';
+    return;
+  }
+
+  const { month, day } = parseDateStr(S.date);
+  const isJan = month === 1;
+  const isDec31 = month === 12 && day === 31;
+  const tier = getDateTier(month, day, isJan);
+  const table = P[S.tier];
+  let base = 0;
+  let tierLabel = '';
+
+  function getD31Price(t, label) {
+    const sl = document.getElementById('timeSlot').value;
+    S.slot = sl;
+    if (sl==='morning')  return { price: t.d31m, lbl: label + ' · 31 декабря · до 16:00' };
+    if (sl==='evening')  return { price: t.d31e, lbl: label + ' · 31 декабря · 16:00–22:00' };
+    return { price: t.d31n, lbl: label + ' · 31 декабря · после 22:00 ★' };
+  }
+
+  if (S.fmt === 'mass') {
+    const t = table.mass;
+    if (isJan) { base = t.jan; tierLabel = 'Массовый праздник · Январь'; }
+    else if (isDec31) { const r = getD31Price(t,'Массовый праздник'); base = r.price; tierLabel = r.lbl; }
+    else if (tier==='t1') { base = t.t1; tierLabel = 'Массовый праздник · до 20 декабря'; }
+    else if (tier==='t2') { base = t.t2; tierLabel = 'Массовый праздник · 20–27 декабря'; }
+    else { base = t.t3; tierLabel = 'Массовый праздник · 28–30 декабря'; }
+  } else if (S.fmt === 'corp') {
+    const t = table.corp;
+    if (isJan) { base = t.jan; tierLabel = 'Корпоратив · Январь'; }
+    else if (isDec31) { const r = getD31Price(t,'Корпоратив'); base = r.price; tierLabel = r.lbl; }
+    else if (tier==='t1') { base = t.t1; tierLabel = 'Корпоратив · до 20 декабря'; }
+    else if (tier==='t2') { base = t.t2; tierLabel = 'Корпоратив · 20–27 декабря'; }
+    else { base = t.t3; tierLabel = 'Корпоратив · 28–30 декабря'; }
+  } else {
+    const t = table.home;
+    if (isJan) { base = t.jan; tierLabel = 'На дом · Январь'; }
+    else if (isDec31) {
+      const r = getD31Price(t,'На дом');
+      base = r.price; tierLabel = r.lbl;
+    } else if (tier==='t1') { base = t.t1; tierLabel = 'На дом · до 20 декабря'; }
+    else if (tier==='t2') { base = t.t2; tierLabel = 'На дом · 20–27 декабря'; }
+    else { base = t.t3; tierLabel = 'На дом · 28–30 декабря'; }
+  }
+
+  let surcharge = 0;
+  let surchargeLabel = '';
+  if (S.loc === 'outside') {
+    const km = parseInt(document.getElementById('kmIn').value) || 0;
+    if (km > 0) {
+      S.km = km;
+      const pct = Math.ceil(km / 10) * 15; // каждые 10 км = +15%
+      surcharge = Math.round(base * pct / 100);
+      surchargeLabel = `Выезд за город ${km} км (+${pct}%)`;
+      document.getElementById('surchargeTag').textContent = `+${pct}%`;
+    } else {
+      document.getElementById('surchargeTag').textContent = '';
+    }
+  }
+
+  const total = base + surcharge;
+  const pairNames = { std1:'Пара 1', std2:'Пара 2', vip:'Пара 3' };
+  const dateObj = parseDateStr(S.date);
+  const dateStr = `${dateObj.day} ${['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][dateObj.month]}`;
+
+  let rows = `
+    <div class="brow"><span>${tierLabel} · ${dateStr}</span><span>${rub(base)}</span></div>
+    <div class="brow"><span class="brow-note">Пара: ${pairNames[S.pair]}</span><span></span></div>
+  `;
+  if (surcharge > 0) rows += `<div class="brow"><span>${surchargeLabel}</span><span>+ ${rub(surcharge)}</span></div>`;
+  rows += `<div class="brow"><span>Итого</span><span>${rub(total)}</span></div>`;
+
+  document.getElementById('priceNum').textContent = rub(total);
+  document.getElementById('priceNote').textContent = isDec31 && S.slot==='night' ? '⭐ Самое волшебное время — бой курантов' : '';
+  document.getElementById('breakdown').innerHTML = rows;
+  document.getElementById('priceResult').style.display = 'block';
+}
+
+/* ─── Town quick-pick ───────────────────────────────────────────── */
+function setKm(km) {
+  document.getElementById('kmIn').value = km;
+  document.querySelectorAll('.town-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  calc();
+}
+
+/* ─── Format hints ──────────────────────────────────────────────── */
+function updateFormatHints() {
+  if (!S.tier) return;
+  const t = P[S.tier];
+  const f = n => n.toLocaleString('ru-RU');
+  document.getElementById('fp_home').textContent = `от ${f(t.home.t1)} ₽`;
+  document.getElementById('fp_corp').textContent = `от ${f(t.corp.t1)} ₽`;
+  document.getElementById('fp_mass').textContent = `от ${f(t.mass.t1)} ₽`;
+}
+
+/* ─── Add photos dynamically ────────────────────────────────────── */
+// Как только пришлёте фото, замените эмодзи на <img src="...">
+// Пример: setPhoto('std1', 'photo_vlad.jpg');
+function setPhoto(pairId, src) {
+  const targets = ['av_'+pairId, 'sav_'+pairId];
+  targets.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<img src="${src}" alt="Пара ${pairId}">`;
+  });
+}
+// setPhoto('std1', 'photos/vlad.jpg');
+// setPhoto('std2', 'photos/std2.jpg');
+// setPhoto('vip',  'photos/vip.jpg');
+
+/* ─── Snow ──────────────────────────────────────────────────────── */
+const chars = ['❄','❅','❆','✦','·'];
+const cont = document.getElementById('snow');
+for (let i = 0; i < 30; i++) {
+  const s = document.createElement('div');
+  s.className = 'sf';
+  s.textContent = chars[Math.floor(Math.random()*chars.length)];
+  s.style.cssText = `left:${Math.random()*100}%;font-size:${(.5+Math.random()*1.2).toFixed(1)}em;animation-duration:${(7+Math.random()*10).toFixed(1)}s;animation-delay:${(Math.random()*12).toFixed(1)}s;opacity:${(.2+Math.random()*.5).toFixed(2)}`;
+  cont.appendChild(s);
+}
+</script>
+</body>
+</html>
