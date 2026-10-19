@@ -90,27 +90,42 @@ header p { color: var(--text-muted); font-size: 1em; }
 /* ── Pairs ── */
 .pairs-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 .pair-card {
   border: 2px solid rgba(255,255,255,.18);
-  border-radius: 14px; padding: 18px 12px;
+  border-radius: 14px; padding: 12px 12px 16px;
   text-align: center; cursor: pointer;
   transition: all .25s;
   background: rgba(255,255,255,.03);
 }
 .pair-card:hover { border-color: var(--gold); background: rgba(212,168,67,.08); }
 .pair-card.sel { border-color: var(--gold); background: rgba(212,168,67,.15); box-shadow: 0 0 22px rgba(212,168,67,.25); }
-.pair-avatar {
-  width: 76px; height: 76px; border-radius: 50%;
-  margin: 0 auto 12px; overflow: hidden;
+.pair-photo {
+  position: relative;
+  aspect-ratio: 4 / 3; border-radius: 10px;
+  margin-bottom: 12px; overflow: hidden;
   background: rgba(255,255,255,.1);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 2.2em;
-  border: 2px solid rgba(255,255,255,.15);
 }
-.pair-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pair-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zoom-btn {
+  position: absolute; right: 8px; bottom: 8px;
+  padding: 5px 10px; border-radius: 16px; border: none;
+  background: rgba(7,24,40,.75); color: var(--white);
+  font-size: .75em; font-weight: 600; cursor: pointer;
+}
+.zoom-btn:hover { background: rgba(7,24,40,.95); color: var(--gold); }
+
+/* ── Photo lightbox ── */
+#lightbox {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(0,0,0,.88);
+  display: none; align-items: center; justify-content: center;
+  padding: 16px; cursor: zoom-out;
+}
+#lightbox.open { display: flex; }
+#lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
 .pair-title { font-weight: 700; font-size: .9em; margin-bottom: 3px; }
 .pair-sub { font-size: .78em; color: var(--text-muted); margin-bottom: 8px; }
 .pill {
@@ -316,7 +331,7 @@ footer a:hover { text-decoration: underline; }
   <div class="header-badges">
     <span class="badge">🏙️ Екатеринбург и область</span>
     <span class="badge">🎭 Корпоративы, дом, площадки</span>
-    <span class="badge gold">✦ 3 пары Дед Мороза</span>
+    <span class="badge gold">✦ 2 пары Деда Мороза</span>
   </div>
 </header>
 
@@ -327,21 +342,21 @@ footer a:hover { text-decoration: underline; }
     <div class="step-head"><div class="step-num">1</div> Выберите пару</div>
     <div class="pairs-grid">
 
-      <div class="pair-card" onclick="pickPair('std1',this)" data-tier="standard">
-        <div class="pair-avatar" id="av_std1">🎅</div>
+      <div class="pair-card" onclick="pickPair('p1',this)" data-tier="standard">
+        <div class="pair-photo">
+          <img src="photos/pair1.jpg" alt="Пара 1 — Дед Мороз и Снегурочка в костюмах">
+          <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair1.jpg')">🔍 Увеличить</button>
+        </div>
         <div class="pair-title">Пара 1</div>
         <span class="pill pill-std">Стандарт</span>
       </div>
 
-      <div class="pair-card" onclick="pickPair('std2',this)" data-tier="standard">
-        <div class="pair-avatar" id="av_std2">🎅</div>
+      <div class="pair-card" onclick="pickPair('p2',this)" data-tier="vip">
+        <div class="pair-photo">
+          <img src="photos/pair2.jpg" alt="Пара 2 — Дед Мороз и Снегурочка в костюмах">
+          <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair2.jpg')">🔍 Увеличить</button>
+        </div>
         <div class="pair-title">Пара 2</div>
-        <span class="pill pill-std">Стандарт</span>
-      </div>
-
-      <div class="pair-card" onclick="pickPair('vip',this)" data-tier="vip">
-        <div class="pair-avatar" id="av_vip">🎅</div>
-        <div class="pair-title">Пара 3</div>
         <span class="pill pill-vip">★</span>
       </div>
 
@@ -445,6 +460,8 @@ footer a:hover { text-decoration: underline; }
 
 
 </div><!-- /wrap -->
+
+<div id="lightbox" onclick="closePhoto()"><img id="lightboxImg" alt="Костюмы пары"></div>
 
 <footer>
   <p>© 2026 Дед Мороз и Снегурочка в Екатеринбурге</p>
@@ -636,7 +653,7 @@ function calc() {
   }
 
   const total = base + surcharge;
-  const pairNames = { std1:'Пара 1', std2:'Пара 2', vip:'Пара 3' };
+  const pairNames = { p1:'Пара 1', p2:'Пара 2' };
   const dateObj = parseDateStr(S.date);
   const dateStr = `${dateObj.day} ${['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][dateObj.month]}`;
 
@@ -671,19 +688,16 @@ function updateFormatHints() {
   document.getElementById('fp_mass').textContent = `от ${f(t.mass.t1)} ₽`;
 }
 
-/* ─── Add photos dynamically ────────────────────────────────────── */
-// Как только пришлёте фото, замените эмодзи на <img src="...">
-// Пример: setPhoto('std1', 'photo_vlad.jpg');
-function setPhoto(pairId, src) {
-  const targets = ['av_'+pairId, 'sav_'+pairId];
-  targets.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<img src="${src}" alt="Пара ${pairId}">`;
-  });
+/* ─── Photo lightbox ────────────────────────────────────────────── */
+function openPhoto(e, src) {
+  e.stopPropagation(); // не выбирать пару при нажатии «Увеличить»
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
 }
-// setPhoto('std1', 'photos/vlad.jpg');
-// setPhoto('std2', 'photos/std2.jpg');
-// setPhoto('vip',  'photos/vip.jpg');
+function closePhoto() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePhoto(); });
 
 /* ─── Snow ──────────────────────────────────────────────────────── */
 const chars = ['❄','❅','❆','✦','·'];
