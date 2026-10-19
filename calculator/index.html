@@ -26,6 +26,7 @@ body {
   min-height: 100vh;
   color: var(--white);
   overflow-x: hidden;
+  padding-bottom: 84px; /* место под нижнюю полоску с ценой */
 }
 
 /* ── Snowflakes ── */
@@ -40,7 +41,6 @@ header {
   padding: 56px 24px 36px;
   background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, transparent 100%);
 }
-.logo-line { font-size: 2.8em; margin-bottom: 8px; }
 header h1 {
   font-size: clamp(1.6em, 4vw, 2.5em);
   color: var(--gold);
@@ -127,6 +127,7 @@ header p { color: var(--text-muted); font-size: 1em; }
 #lightbox.open { display: flex; }
 #lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
 .pair-title { font-weight: 700; font-size: .9em; margin-bottom: 3px; }
+.pair-desc { font-size: .8em; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4; }
 .pair-sub { font-size: .78em; color: var(--text-muted); margin-bottom: 8px; }
 .pill {
   display: inline-block; padding: 3px 11px;
@@ -150,41 +151,52 @@ header p { color: var(--text-muted); font-size: 1em; }
 .fmt-name { font-weight: 700; font-size: .9em; }
 .fmt-from { font-size: .78em; color: var(--text-muted); margin-top: 4px; }
 
-/* ── Date ── */
-.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 520px) { .date-row { grid-template-columns: 1fr; } }
-.field-label { font-size: .85em; color: var(--text-muted); margin-bottom: 7px; }
-input[type="date"], select {
-  width: 100%; padding: 11px 14px;
-  background: rgba(255,255,255,.09);
-  border: 1px solid rgba(255,255,255,.25);
-  border-radius: 9px; color: var(--white);
-  font-size: .95em; outline: none;
-  transition: border-color .25s;
-  -webkit-appearance: none;
+/* ── Choice buttons (дата, время, выезд) ── */
+.choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.choice-btn {
+  border: 2px solid rgba(255,255,255,.18); border-radius: 12px;
+  padding: 12px 10px; text-align: center; cursor: pointer;
+  background: rgba(255,255,255,.03); color: var(--white);
+  font-family: inherit; transition: all .2s;
 }
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.6); }
-input[type="date"]:focus, select:focus { border-color: var(--gold); }
-select option { background: #0d2640; }
+.choice-btn:hover, .choice-btn.sel { border-color: var(--gold); background: rgba(212,168,67,.12); }
+.ch-main { font-weight: 700; font-size: .92em; }
+.ch-sub { font-size: .76em; color: var(--text-muted); margin-top: 4px; line-height: 1.35; }
+.ch-price { font-size: .85em; color: var(--gold); font-weight: 700; margin-top: 5px; }
+.ch-price:empty { display: none; }
+.field-label { font-size: .85em; color: var(--text-muted); margin: 16px 0 8px; }
 .hidden { display: none !important; }
-.town-btn {
-  padding: 6px 12px; border-radius: 20px; font-size: .78em; font-weight: 600;
-  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06);
-  color: var(--white); cursor: pointer; transition: all .2s;
-}
-.town-btn:hover, .town-btn.active { border-color: var(--gold); background: rgba(212,168,67,.18); color: var(--gold); }
-input[type="number"]::-webkit-inner-spin-button { opacity: .5; }
 
-/* ── Location ── */
-.loc-toggle { display: flex; gap: 10px; margin-bottom: 14px; }
-.loc-btn {
-  flex: 1; padding: 11px;
-  border: 2px solid rgba(255,255,255,.18);
-  border-radius: 9px; background: transparent;
-  color: var(--white); cursor: pointer;
-  font-size: .9em; font-weight: 600; transition: all .25s;
+/* ── Sticky price bar ── */
+#stickyBar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: rgba(7,24,40,.95); backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(212,168,67,.45);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
 }
-.loc-btn.active { border-color: var(--gold); background: rgba(212,168,67,.15); }
+.sb-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.sb-info { flex: 1; min-width: 0; }
+.sb-lbl { font-size: .75em; color: var(--text-muted); }
+.sb-price { font-size: 1.35em; font-weight: 900; color: var(--gold); line-height: 1.2; }
+.sb-hint { font-size: .95em; font-weight: 600; }
+.sb-btn {
+  padding: 12px 18px; border-radius: 26px; border: 2px solid var(--gold);
+  background: var(--gold); color: var(--blue-deep);
+  font-family: inherit; font-size: .95em; font-weight: 800;
+  cursor: pointer; white-space: nowrap;
+}
+.sb-btn.ghost { background: transparent; color: var(--gold); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; left: 50%; bottom: 96px; z-index: 6;
+  transform: translateX(-50%); max-width: calc(100% - 32px);
+  background: var(--white); color: var(--blue-deep);
+  padding: 10px 16px; border-radius: 10px; font-size: .85em; font-weight: 600;
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+#toast.show { opacity: 1; }
 
 /* ── Price result ── */
 #priceResult {
@@ -325,7 +337,6 @@ footer a:hover { text-decoration: underline; }
 
 <!-- Header -->
 <header>
-  <div class="logo-line">🎅 ❄️ 🎄</div>
   <h1>Дед Мороз и Снегурочка в Екатеринбурге</h1>
   <p>Рассчитайте стоимость за 2 минуты</p>
   <div class="header-badges">
@@ -348,6 +359,7 @@ footer a:hover { text-decoration: underline; }
           <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair1.jpg')">🔍 Увеличить</button>
         </div>
         <div class="pair-title">Пара 1</div>
+        <div class="pair-desc">Классические костюмы</div>
         <span class="pill pill-std">Стандарт</span>
       </div>
 
@@ -357,6 +369,7 @@ footer a:hover { text-decoration: underline; }
           <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair2.jpg?v=3')">🔍 Увеличить</button>
         </div>
         <div class="pair-title">Пара 2</div>
+        <div class="pair-desc">Премиум-костюмы · Дед Мороз с 15-летним опытом</div>
         <span class="pill pill-vip">★</span>
       </div>
 
@@ -395,52 +408,59 @@ footer a:hover { text-decoration: underline; }
 
   <!-- STEP 3: Date & Time -->
   <div class="card" id="s3">
-    <div class="step-head"><div class="step-num">3</div> Дата и время</div>
-    <div class="date-row">
-      <div>
-        <div class="field-label">Выберите дату</div>
-        <input type="date" id="dateIn" min="2026-12-01" max="2027-01-10" onchange="onDate()">
-      </div>
-      <div id="timeWrap" class="hidden">
-        <div class="field-label">Время визита 31 декабря</div>
-        <select id="timeSlot" onchange="calc()">
-          <option value="morning">До 16:00 — дневное время</option>
-          <option value="evening">16:00 – 22:00 — вечернее</option>
-          <option value="night">После 22:00 — бой курантов ★</option>
-        </select>
+    <div class="step-head"><div class="step-num">3</div> Когда праздник</div>
+    <div class="choice-grid">
+      <button class="choice-btn period-btn" onclick="pickPeriod('t1',this)">
+        <div class="ch-main">1–19 декабря</div><div class="ch-price" id="pp_t1"></div>
+      </button>
+      <button class="choice-btn period-btn" onclick="pickPeriod('t2',this)">
+        <div class="ch-main">20–27 декабря</div><div class="ch-price" id="pp_t2"></div>
+      </button>
+      <button class="choice-btn period-btn" onclick="pickPeriod('t3',this)">
+        <div class="ch-main">28–30 декабря</div><div class="ch-price" id="pp_t3"></div>
+      </button>
+      <button class="choice-btn period-btn" onclick="pickPeriod('d31',this)">
+        <div class="ch-main">31 декабря</div><div class="ch-price" id="pp_d31"></div>
+      </button>
+      <button class="choice-btn period-btn" onclick="pickPeriod('jan',this)">
+        <div class="ch-main">1–10 января</div><div class="ch-price" id="pp_jan"></div>
+      </button>
+    </div>
+    <div id="timeWrap" class="hidden">
+      <div class="field-label">Время визита 31 декабря</div>
+      <div class="choice-grid">
+        <button class="choice-btn slot-btn sel" onclick="pickSlot('m',this)">
+          <div class="ch-main">До 16:00</div><div class="ch-sub">дневное время</div><div class="ch-price" id="ps_m"></div>
+        </button>
+        <button class="choice-btn slot-btn" onclick="pickSlot('e',this)">
+          <div class="ch-main">16:00 – 22:00</div><div class="ch-sub">вечер</div><div class="ch-price" id="ps_e"></div>
+        </button>
+        <button class="choice-btn slot-btn" onclick="pickSlot('n',this)">
+          <div class="ch-main">После 22:00 ★</div><div class="ch-sub">бой курантов</div><div class="ch-price" id="ps_n"></div>
+        </button>
       </div>
     </div>
   </div>
 
   <!-- STEP 4: Location -->
   <div class="card" id="s4">
-    <div class="step-head"><div class="step-num">4</div> Местоположение</div>
-    <div class="loc-toggle">
-      <button class="loc-btn active" id="lbCity" onclick="setLoc('city')">🏙️ Екатеринбург</button>
-      <button class="loc-btn" id="lbOut" onclick="setLoc('outside')">🌲 За городом</button>
-    </div>
-    <div id="kmWrap" class="hidden">
-      <div class="field-label">Расстояние от центра Екатеринбурга</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <input type="number" id="kmIn" min="1" max="200" placeholder="км"
-          oninput="calc()" onchange="calc()"
-          style="width:100px;padding:10px 12px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.25);border-radius:9px;color:white;font-size:1em;outline:none">
-        <span style="color:var(--text-muted);font-size:.9em">км от пл. 1905 года</span>
-        <span id="surchargeTag" style="margin-left:auto;font-weight:700;color:var(--gold);font-size:.95em"></span>
-      </div>
-      <div style="margin-bottom:6px">
-        <div class="field-label" style="margin-bottom:6px">Быстрый выбор населённого пункта:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px" id="townBtns">
-          <button class="town-btn" onclick="setKm(15)">В. Пышма · 15 км</button>
-          <button class="town-btn" onclick="setKm(20)">Берёзовский · 20 км</button>
-          <button class="town-btn" onclick="setKm(18)">Арамиль · 18 км</button>
-          <button class="town-btn" onclick="setKm(25)">Среднеуральск · 25 км</button>
-          <button class="town-btn" onclick="setKm(30)">Сысерть · 30 км</button>
-          <button class="town-btn" onclick="setKm(35)">Полевской · 35 км</button>
-          <button class="town-btn" onclick="setKm(45)">Первоуральск · 45 км</button>
-          <button class="town-btn" onclick="setKm(50)">Ревда · 50 км</button>
-        </div>
-      </div>
+    <div class="step-head"><div class="step-num">4</div> Где праздник</div>
+    <div class="choice-grid">
+      <button class="choice-btn zone-btn sel" onclick="pickZone('city',this)">
+        <div class="ch-main">🏙️ Екатеринбург</div><div class="ch-price">без доплаты</div>
+      </button>
+      <button class="choice-btn zone-btn" onclick="pickZone('z1',this)">
+        <div class="ch-main">До 20 км</div><div class="ch-sub">В. Пышма, Берёзовский, Арамиль</div><div class="ch-price">+1 000 ₽</div>
+      </button>
+      <button class="choice-btn zone-btn" onclick="pickZone('z2',this)">
+        <div class="ch-main">20–35 км</div><div class="ch-sub">Среднеуральск, Сысерть, Полевской</div><div class="ch-price">+2 000 ₽</div>
+      </button>
+      <button class="choice-btn zone-btn" onclick="pickZone('z3',this)">
+        <div class="ch-main">35–50 км</div><div class="ch-sub">Первоуральск, Ревда</div><div class="ch-price">+3 000 ₽</div>
+      </button>
+      <button class="choice-btn zone-btn" onclick="pickZone('far',this)">
+        <div class="ch-main">Дальше 50 км</div><div class="ch-price">по договорённости</div>
+      </button>
     </div>
   </div>
 
@@ -451,17 +471,28 @@ footer a:hover { text-decoration: underline; }
     <div class="price-note" id="priceNote"></div>
     <div class="breakdown" id="breakdown"></div>
     <div class="cta-wrap">
-      <a href="https://vk.com/makedayekb" target="_blank" class="btn-primary">🎅 Забронировать дату</a>
+      <button type="button" class="btn-primary" onclick="bookTg()">✈️ Забронировать в Telegram</button>
     </div>
     <div style="margin-top:16px;font-size:.95em;color:rgba(255,255,255,.75);letter-spacing:.3px">
       📞 <a href="tel:+79090175865" style="color:var(--gold);text-decoration:none;font-weight:700">+7 (909) 017-58-65</a>
     </div>
   </div>
 
-
 </div><!-- /wrap -->
 
 <div id="lightbox" onclick="closePhoto()"><img id="lightboxImg" alt="Костюмы пары"></div>
+
+<!-- Sticky price bar -->
+<div id="stickyBar">
+  <div class="sb-inner">
+    <div class="sb-info">
+      <div class="sb-lbl" id="sbLbl"></div>
+      <div id="sbMain" class="sb-hint">Осталось выбрать: пару, формат, дату</div>
+    </div>
+    <button type="button" class="sb-btn ghost" id="sbBtn" onclick="onBarBtn()">Далее ↓</button>
+  </div>
+</div>
+<div id="toast"></div>
 
 <footer>
   <p>© 2026 Дед Мороз и Снегурочка в Екатеринбурге</p>
@@ -493,20 +524,40 @@ const P = {
     d31m = 31 декабря до 16:00
     d31e = 31 декабря 16:00–22:00
     d31n = 31 декабря после 22:00 (бой курантов)
-    jan  = январь (= t2)
-  Надбавка за выезд: ceil(km/10) × 10% от суммы заказа
+    jan  = 1–10 января (= t2)
+  Доплата за выезд — фиксированная, см. ZONES ниже
 */
 
+/* ─── Periods, travel zones, Telegram ──────────────────────────── */
+const PERIODS = { t1:'1–19 декабря', t2:'20–27 декабря', t3:'28–30 декабря', d31:'31 декабря', jan:'1–10 января' };
+const SLOTS = { m:'до 16:00', e:'16:00–22:00', n:'после 22:00 ★' };
+// Фиксированная доплата за выезд, ₽ (null — по договорённости)
+const ZONES = {
+  city: { name:'Екатеринбург', add:0 },
+  z1:   { name:'до 20 км от города', add:1000 },
+  z2:   { name:'20–35 км от города', add:2000 },
+  z3:   { name:'35–50 км от города', add:3000 },
+  far:  { name:'дальше 50 км от города', add:null }
+};
+const FMT_NAMES = { home:'Поздравление на дом', corp:'Корпоратив', mass:'Массовый праздник' };
+const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
+// Чат для брони: можно заменить на 'https://t.me/username'
+const TG_LINK = 'https://t.me/+79090175865';
+
 /* ─── State ─────────────────────────────────────────────────────── */
-let S = { pair:null, tier:null, fmt:null, date:null, slot:'morning', loc:'city', km:10 };
+let S = { pair:null, tier:null, fmt:null, period:null, slot:'m', zone:'city', ready:false, message:'' };
+
+function selectIn(selector, el) {
+  document.querySelectorAll(selector).forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+}
 
 /* ─── Pair ──────────────────────────────────────────────────────── */
 function pickPair(id, el) {
   S.pair = id;
   S.tier = el.dataset.tier; // 'standard' | 'vip'
-  document.querySelectorAll('.pair-card').forEach(c => c.classList.remove('sel'));
-  el.classList.add('sel');
-  updateFormatHints();
+  selectIn('.pair-card', el);
+  updateHints();
   calc();
 }
 
@@ -538,154 +589,143 @@ const FMT_DESC = {
 /* ─── Format ────────────────────────────────────────────────────── */
 function pickFormat(f, el) {
   S.fmt = f;
-  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('sel'));
-  el.classList.add('sel');
+  selectIn('.fmt-btn', el);
   const panel = document.getElementById('fmtDescPanel');
   panel.innerHTML = FMT_DESC[f];
   panel.style.display = 'block';
-  refreshTimeWrap();
+  updateHints();
   calc();
 }
 
-/* ─── Date ──────────────────────────────────────────────────────── */
-function onDate() {
-  const v = document.getElementById('dateIn').value;
-  S.date = v || null;
-  const is31 = v && v.endsWith('-12-31');
-  document.getElementById('timeWrap').classList.toggle('hidden', !is31);
+/* ─── Date & time ───────────────────────────────────────────────── */
+function pickPeriod(p, el) {
+  S.period = p;
+  selectIn('.period-btn', el);
+  document.getElementById('timeWrap').classList.toggle('hidden', p !== 'd31');
   calc();
 }
 
-// Alias called when format changes — re-evaluate time slot visibility
-function refreshTimeWrap() {
-  const v = document.getElementById('dateIn').value;
-  const is31 = v && v.endsWith('-12-31');
-  document.getElementById('timeWrap').classList.toggle('hidden', !is31);
+function pickSlot(s, el) {
+  S.slot = s;
+  selectIn('.slot-btn', el);
+  calc();
 }
 
 /* ─── Location ──────────────────────────────────────────────────── */
-function setLoc(l) {
-  S.loc = l;
-  document.getElementById('lbCity').classList.toggle('active', l==='city');
-  document.getElementById('lbOut').classList.toggle('active', l==='outside');
-  document.getElementById('kmWrap').classList.toggle('hidden', l==='city');
+function pickZone(z, el) {
+  S.zone = z;
+  selectIn('.zone-btn', el);
   calc();
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
-function parseDateStr(s) {
-  // s = 'YYYY-MM-DD' — parse without timezone offset issues
-  const [y,m,d] = s.split('-').map(Number);
-  return { year:y, month:m, day:d };
-}
-
-function getDateTier(month, day, isJan) {
-  if (isJan) return 'jan';
-  if (day <= 19) return 't1';
-  if (day <= 27) return 't2';
-  if (day <= 30) return 't3';
-  return 'dec31'; // day === 31
-}
-
 function rub(n) { return n.toLocaleString('ru-RU') + ' ₽'; }
+
+function basePrice(tier, fmt, period, slot) {
+  const t = P[tier][fmt];
+  return period === 'd31' ? t['d31' + slot] : t[period];
+}
+
+/* ─── Price hints on buttons ────────────────────────────────────── */
+function updateHints() {
+  if (S.tier) {
+    const t = P[S.tier];
+    document.getElementById('fp_home').textContent = `от ${rub(t.home.t1)}`;
+    document.getElementById('fp_corp').textContent = `от ${rub(t.corp.t1)}`;
+    document.getElementById('fp_mass').textContent = `от ${rub(t.mass.t1)}`;
+  }
+  const ok = S.tier && S.fmt;
+  Object.keys(PERIODS).forEach(p => {
+    const txt = !ok ? '' : p === 'd31'
+      ? `от ${rub(basePrice(S.tier, S.fmt, p, 'm'))}`
+      : rub(basePrice(S.tier, S.fmt, p));
+    document.getElementById('pp_' + p).textContent = txt;
+  });
+  Object.keys(SLOTS).forEach(s => {
+    document.getElementById('ps_' + s).textContent = ok ? rub(basePrice(S.tier, S.fmt, 'd31', s)) : '';
+  });
+}
 
 /* ─── Main calc ─────────────────────────────────────────────────── */
 function calc() {
-  if (!S.pair || !S.fmt || !S.date) {
+  const missing = [];
+  if (!S.pair) missing.push('пару');
+  if (!S.fmt) missing.push('формат');
+  if (!S.period) missing.push('дату');
+  S.ready = missing.length === 0;
+
+  const sbLbl = document.getElementById('sbLbl');
+  const sbMain = document.getElementById('sbMain');
+  const sbBtn = document.getElementById('sbBtn');
+
+  if (!S.ready) {
     document.getElementById('priceResult').style.display = 'none';
+    sbLbl.textContent = '';
+    sbMain.className = 'sb-hint';
+    sbMain.textContent = 'Осталось выбрать: ' + missing.join(', ');
+    sbBtn.className = 'sb-btn ghost';
+    sbBtn.textContent = 'Далее ↓';
     return;
   }
 
-  const { month, day } = parseDateStr(S.date);
-  const isJan = month === 1;
-  const isDec31 = month === 12 && day === 31;
-  const tier = getDateTier(month, day, isJan);
-  const table = P[S.tier];
-  let base = 0;
-  let tierLabel = '';
-
-  function getD31Price(t, label) {
-    const sl = document.getElementById('timeSlot').value;
-    S.slot = sl;
-    if (sl==='morning')  return { price: t.d31m, lbl: label + ' · 31 декабря · до 16:00' };
-    if (sl==='evening')  return { price: t.d31e, lbl: label + ' · 31 декабря · 16:00–22:00' };
-    return { price: t.d31n, lbl: label + ' · 31 декабря · после 22:00 ★' };
-  }
-
-  if (S.fmt === 'mass') {
-    const t = table.mass;
-    if (isJan) { base = t.jan; tierLabel = 'Массовый праздник · Январь'; }
-    else if (isDec31) { const r = getD31Price(t,'Массовый праздник'); base = r.price; tierLabel = r.lbl; }
-    else if (tier==='t1') { base = t.t1; tierLabel = 'Массовый праздник · до 20 декабря'; }
-    else if (tier==='t2') { base = t.t2; tierLabel = 'Массовый праздник · 20–27 декабря'; }
-    else { base = t.t3; tierLabel = 'Массовый праздник · 28–30 декабря'; }
-  } else if (S.fmt === 'corp') {
-    const t = table.corp;
-    if (isJan) { base = t.jan; tierLabel = 'Корпоратив · Январь'; }
-    else if (isDec31) { const r = getD31Price(t,'Корпоратив'); base = r.price; tierLabel = r.lbl; }
-    else if (tier==='t1') { base = t.t1; tierLabel = 'Корпоратив · до 20 декабря'; }
-    else if (tier==='t2') { base = t.t2; tierLabel = 'Корпоратив · 20–27 декабря'; }
-    else { base = t.t3; tierLabel = 'Корпоратив · 28–30 декабря'; }
-  } else {
-    const t = table.home;
-    if (isJan) { base = t.jan; tierLabel = 'На дом · Январь'; }
-    else if (isDec31) {
-      const r = getD31Price(t,'На дом');
-      base = r.price; tierLabel = r.lbl;
-    } else if (tier==='t1') { base = t.t1; tierLabel = 'На дом · до 20 декабря'; }
-    else if (tier==='t2') { base = t.t2; tierLabel = 'На дом · 20–27 декабря'; }
-    else { base = t.t3; tierLabel = 'На дом · 28–30 декабря'; }
-  }
-
-  let surcharge = 0;
-  let surchargeLabel = '';
-  if (S.loc === 'outside') {
-    const km = parseInt(document.getElementById('kmIn').value) || 0;
-    if (km > 0) {
-      S.km = km;
-      const pct = Math.ceil(km / 10) * 15; // каждые 10 км = +15%
-      surcharge = Math.round(base * pct / 100);
-      surchargeLabel = `Выезд за город ${km} км (+${pct}%)`;
-      document.getElementById('surchargeTag').textContent = `+${pct}%`;
-    } else {
-      document.getElementById('surchargeTag').textContent = '';
-    }
-  }
-
-  const total = base + surcharge;
-  const pairNames = { p1:'Пара 1', p2:'Пара 2' };
-  const dateObj = parseDateStr(S.date);
-  const dateStr = `${dateObj.day} ${['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][dateObj.month]}`;
+  const base = basePrice(S.tier, S.fmt, S.period, S.slot);
+  const zone = ZONES[S.zone];
+  const add = zone.add || 0;
+  const total = base + add;
+  const pref = zone.add === null ? 'от ' : '';
+  const when = PERIODS[S.period] + (S.period === 'd31' ? ' · ' + SLOTS[S.slot] : '');
 
   let rows = `
-    <div class="brow"><span>${tierLabel} · ${dateStr}</span><span>${rub(base)}</span></div>
-    <div class="brow"><span class="brow-note">Пара: ${pairNames[S.pair]}</span><span></span></div>
+    <div class="brow"><span>${FMT_NAMES[S.fmt]} · ${when}</span><span>${rub(base)}</span></div>
+    <div class="brow"><span class="brow-note">${PAIR_NAMES[S.pair]}</span><span></span></div>
   `;
-  if (surcharge > 0) rows += `<div class="brow"><span>${surchargeLabel}</span><span>+ ${rub(surcharge)}</span></div>`;
-  rows += `<div class="brow"><span>Итого</span><span>${rub(total)}</span></div>`;
+  if (zone.add === null) rows += `<div class="brow"><span>Выезд ${zone.name}</span><span>по договорённости</span></div>`;
+  else if (add > 0) rows += `<div class="brow"><span>Выезд ${zone.name}</span><span>+ ${rub(add)}</span></div>`;
+  rows += `<div class="brow"><span>Итого</span><span>${pref}${rub(total)}</span></div>`;
 
-  document.getElementById('priceNum').textContent = rub(total);
-  document.getElementById('priceNote').textContent = isDec31 && S.slot==='night' ? '⭐ Самое волшебное время — бой курантов' : '';
+  document.getElementById('priceNum').textContent = pref + rub(total);
+  document.getElementById('priceNote').textContent = S.period === 'd31' && S.slot === 'n' ? '⭐ Самое волшебное время — бой курантов' : '';
   document.getElementById('breakdown').innerHTML = rows;
   document.getElementById('priceResult').style.display = 'block';
+
+  sbLbl.textContent = 'Итого';
+  sbMain.className = 'sb-price';
+  sbMain.textContent = pref + rub(total);
+  sbBtn.className = 'sb-btn';
+  sbBtn.textContent = '✈️ Забронировать';
+
+  S.message = [
+    'Здравствуйте! Хочу забронировать Деда Мороза и Снегурочку:',
+    `• ${PAIR_NAMES[S.pair]}`,
+    `• ${FMT_NAMES[S.fmt]}`,
+    `• ${when}`,
+    `• Место: ${zone.name}`,
+    `Расчёт на сайте: ${pref}${rub(total)}`,
+    'Точная дата и адрес: '
+  ].join('\n');
 }
 
-/* ─── Town quick-pick ───────────────────────────────────────────── */
-function setKm(km) {
-  document.getElementById('kmIn').value = km;
-  document.querySelectorAll('.town-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  calc();
+/* ─── Booking ───────────────────────────────────────────────────── */
+function onBarBtn() {
+  if (S.ready) { bookTg(); return; }
+  const target = !S.pair ? 's1' : !S.fmt ? 's2' : 's3';
+  document.getElementById(target).scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-/* ─── Format hints ──────────────────────────────────────────────── */
-function updateFormatHints() {
-  if (!S.tier) return;
-  const t = P[S.tier];
-  const f = n => n.toLocaleString('ru-RU');
-  document.getElementById('fp_home').textContent = `от ${f(t.home.t1)} ₽`;
-  document.getElementById('fp_corp').textContent = `от ${f(t.corp.t1)} ₽`;
-  document.getElementById('fp_mass').textContent = `от ${f(t.mass.t1)} ₽`;
+function bookTg() {
+  if (!S.ready) return;
+  try { navigator.clipboard.writeText(S.message).catch(() => {}); } catch (e) {}
+  window.open(TG_LINK + '?text=' + encodeURIComponent(S.message), '_blank');
+  showToast('Текст заявки скопирован — если чат открылся пустым, просто вставьте его');
+}
+
+let toastTimer;
+function showToast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
 }
 
 /* ─── Photo lightbox ────────────────────────────────────────────── */
