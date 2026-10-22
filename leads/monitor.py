@@ -19,6 +19,8 @@
   TELEGRAM_BOT_TOKEN — токен бота от @BotFather
   TELEGRAM_CHAT_ID   — куда слать находки (ваш chat id)
   VK_SERVICE_TOKEN   — сервисный ключ приложения ВКонтакте
+  FIREBASE_SERVICE_ACCOUNT — JSON-ключ сервисного аккаунта Firebase: находки
+                       и тендеры пишутся в коллекцию `leads` CRM (раздел «Лиды»)
   STATE_DIR          — папка с состоянием между запусками (кэш Actions)
   MAX_AGE_DAYS       — не старше скольких дней брать посты (по умолчанию 3)
   SEND_REPORT=1      — прислать отчёт о проверке источников
@@ -31,6 +33,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -40,6 +43,7 @@ from html.parser import HTMLParser
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCES = os.path.join(HERE, 'sources.json')
 CALC_URL = 'https://ponipagoni-ctrl.github.io/crm/calculator/'
+CRM_LEADS_URL = 'https://ponipagoni-ctrl.github.io/crm/#leads'
 VK_API = 'https://api.vk.com/method/'
 VK_VERSION = '5.199'
 UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -374,6 +378,51 @@ def tenders_eis(cfg, errors):
     return out
 
 
+# ─── CRM (Firestore) ──────────────────────────────────────────────────
+def crm_connect():
+    """Токен доступа к Firestore по ключу сервисного аккаунта или None."""
+    raw = os.environ.get('FIREBASE_SERVICE_ACCOUNT', '').strip()
+    if not raw:
+        return None
+    from google.oauth2 import service_account  # ставится в workflow: pip install google-auth requests
+    import google.auth.transport.requests
+    info = json.loads(raw)
+    creds = service_account.Credentials.from_service_account_info(
+        info, scopes=['https://www.googleapis.com/auth/datastore'])
+    creds.refresh(google.auth.transport.requests.Request())
+    return {'token': creds.token, 'project': info['project_id']}
+
+
+def fs_value(v):
+    if v is None:
+        return {'nullValue': None}
+    if isinstance(v, bool):
+        return {'booleanValue': v}
+    if isinstance(v, int):
+        return {'integerValue': str(v)}
+    return {'stringValue': str(v)}
+
+
+def crm_add(crm, key, data):
+    """Создаёт лид в CRM. Уже существующий (тот же пост) не трогаем."""
+    doc_id = re.sub(r'[^A-Za-z0-9_-]', '_', key)[:150]
+    url = (f"https://firestore.googleapis.com/v1/projects/{crm['project']}/databases/(default)/documents/leads?"
+           + urllib.parse.urlencode({'documentId': doc_id}))
+    body = json.dumps({'fields': {k: fs_value(v) for k, v in data.items()}}).encode()
+    req = urllib.request.Request(url, data=body, method='POST', headers={
+        'Authorization': 'Bearer ' + crm['token'], 'Content-Type': 'application/json'})
+    try:
+        urllib.request.urlopen(req, timeout=20).read()
+    except urllib.error.HTTPError as e:
+        if e.code != 409:  # 409 — такой лид уже есть
+            raise RuntimeError(f'Firestore {e.code}: {e.read()[:200]!r}')
+    return True
+
+
+def ms(dt):
+    return int(dt.timestamp() * 1000)
+
+
 # ─── Telegram-бот ─────────────────────────────────────────────────────
 def tg_api(token, method, params):
     data = urllib.parse.urlencode(params).encode()
@@ -451,6 +500,7 @@ def notify(token, chat_id, lead):
         f"{text}\n\n"
         f"🔗 {lead['url']}\n"
         + (f"👤 Автор: {lead['author']}\n" if lead.get('author') else '')
+        + (f"📥 В CRM: {CRM_LEADS_URL}\n" if lead.get('in_crm') else '')
         + "\n"
         f"✍️ Черновик ответа:\n{lead['draft']}"
     )
@@ -466,6 +516,8 @@ def source_report(stats, new_leads):
                      f"свежих комментариев — {stats.get('vk_comments', 0)}")
     for name, s in stats['sources'].items():
         lines.append(f"{'✓' if s['posts'] else '·'} {name}: свежих постов — {s['posts']}")
+    if stats.get('crm'):
+        lines.append(stats['crm'])
     for e in stats['errors']:
         lines.append(f'✗ {e}')
     lines.append(f"\nНовых заявок клиентов в этом запуске: {new_leads}"
@@ -474,7 +526,7 @@ def source_report(stats, new_leads):
 
 
 # ─── Сводка раз в 3 дня ───────────────────────────────────────────────
-def digest(token, chat_id, src, st, stats, now):
+def digest(token, chat_id, src, st, stats, now, crm=None):
     cfg = src['b2b_tenders']
     t_errors = []
     tenders = tenders_eis(cfg, t_errors) + tenders_rostender(cfg, t_errors)
@@ -503,6 +555,13 @@ def digest(token, chat_id, src, st, stats, now):
              + ('\n\nНе удалось проверить:\n' + '\n'.join(t_errors) if t_errors else ''))
     for t in new_tenders:
         st['tenders_seen'].append(t['id'])
+        if crm:
+            try:
+                crm_add(crm, 'tender:' + t['id'], {
+                    'kind': 'tender', 'level': 'tender', 'source': f"Тендер · {t['site']}", 'text': t['title'],
+                    'extra': t['extra'], 'url': t['url'], 'status': 'new', 'foundAt': ms(now)})
+            except Exception as e:
+                print('CRM tender error:', e)
     print(f'сводка: тендеров найдено {len(tenders)}, новых {len(new_tenders)}')
     for e in t_errors:
         print('  тендеры ✗', e)
@@ -557,6 +616,12 @@ def main():
     if token and chat_id:
         process_buttons(token, chat_id, st)
 
+    crm = None
+    try:
+        crm = crm_connect()
+    except Exception as e:
+        print('CRM connect error:', e)
+
     leads = []
     stats = {'sources': {}, 'errors': []}
 
@@ -568,7 +633,7 @@ def main():
             return
         leads.append({
             'level': level, 'source': source, 'stat': stat, 'url': url, 'post': key,
-            'author': author, 'text': text,
+            'author': author, 'text': text, 'date_ms': ms(date),
             'date_h': date.astimezone(EKB).strftime('%d.%m %H:%M'),
             'draft': draft_reply(details(text)),
         })
@@ -605,6 +670,22 @@ def main():
         stats['errors'].append('ВК: ключ VK_SERVICE_TOKEN не задан')
     stats['new_leads'] = len(leads)
 
+    crm_written = 0
+    for lead in leads:
+        if not crm:
+            break
+        try:
+            crm_add(crm, lead['post'], {
+                'kind': 'request', 'level': lead['level'], 'source': lead['source'], 'stat': lead['stat'],
+                'text': lead['text'], 'url': lead['url'], 'author': lead['author'], 'draft': lead['draft'],
+                'status': 'new', 'foundAt': ms(now), 'postDate': lead['date_ms']})
+            lead['in_crm'] = True
+            crm_written += 1
+        except Exception as e:
+            print('CRM write error:', e)
+    stats['crm'] = ('CRM: ключ FIREBASE_SERVICE_ACCOUNT не задан — лиды только в боте' if not crm
+                    else f'CRM: записано новых лидов — {crm_written}')
+
     report = source_report(stats, len(leads))
     print(report)
     for lead in leads:
@@ -619,16 +700,19 @@ def main():
         for lead in leads:
             try:
                 notify(token, chat_id, lead)
-                st['seen'].append(lead['post'])
-                st['lead_log'].append({'at': now.isoformat(), 'source': lead['stat'], 'level': lead['level']})
+                sent_ok = True
             except Exception as e:
                 print('sendMessage error:', e)
+                sent_ok = False
+            if sent_ok or lead.get('in_crm'):
+                st['seen'].append(lead['post'])
+                st['lead_log'].append({'at': now.isoformat(), 'source': lead['stat'], 'level': lead['level']})
         if os.environ.get('SEND_REPORT') == '1':
             send(token, chat_id, '📋 Проверка источников\n\n' + report)
         last = st['last_digest'] and datetime.fromisoformat(st['last_digest'])
         if os.environ.get('FORCE_DIGEST') == '1' or not last or now - last >= DIGEST_EVERY:
             try:
-                digest(token, chat_id, src, st, stats, now)
+                digest(token, chat_id, src, st, stats, now, crm)
             except Exception as e:
                 print('digest error:', e)
 

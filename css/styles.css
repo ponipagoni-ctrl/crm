@@ -404,3 +404,16 @@ input,select,textarea{font:inherit;color:inherit}
   .kpi-num{font-size:21px}
   .btn-primary{padding:9px 13px;font-size:13px}
 }
+
+/* ---------- Лиды ---------- */
+.lead-card{padding:14px 16px;margin-bottom:10px}
+.lead-card.lead-new{border-left:4px solid var(--accent)}
+.lead-head{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:6px}
+.lead-level{font-size:18px}
+.lead-src{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lead-date{margin-left:auto;flex-shrink:0}
+.lead-text{white-space:pre-wrap;word-break:break-word;font-size:14.5px}
+.lead-actions{margin-top:10px;flex-wrap:wrap}
+.lead-status{margin-top:8px}
+.lead-status select{padding:6px 10px;border-radius:9px;border:1px solid var(--border);background:var(--card);font-size:13px}
+.lead-actions a.btn{text-decoration:none;color:inherit}

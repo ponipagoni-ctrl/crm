@@ -32,5 +32,8 @@ service cloud.firestore {
     match /campaigns/{id} { allow read, write: if isApproved(); }
     match /tasks/{id}     { allow read, write: if isApproved(); }
     match /meta/{id}      { allow read, write: if isApproved(); }
+    // Лиды кладёт программа поиска (сервисный аккаунт, правила её не касаются);
+    // команда их читает и меняет статус, создавать вручную не нужно
+    match /leads/{id}     { allow read, update, delete: if isApproved(); }
   }
 }

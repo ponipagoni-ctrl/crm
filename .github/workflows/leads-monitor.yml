@@ -42,11 +42,16 @@ jobs:
           key: leads-seen-${{ github.run_id }}
           restore-keys: leads-seen-
 
+      # Для записи лидов в CRM (Firestore) по ключу сервисного аккаунта
+      - name: Установить google-auth
+        run: pip install --quiet google-auth requests
+
       - name: Проверить источники
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           VK_SERVICE_TOKEN: ${{ secrets.VK_SERVICE_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           STATE_DIR: .leads-state
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
           FORCE_DIGEST: ${{ inputs.digest && '1' || '0' }}

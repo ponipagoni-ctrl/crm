@@ -27,6 +27,7 @@
       <button class="nav-item" data-view="deals"><span class="nav-ico">💼</span><span>Сделки</span><span class="nav-badge" id="badge-deals"></span></button>
       <button class="nav-item" data-view="calendar"><span class="nav-ico">📅</span><span>Календарь</span></button>
       <button class="nav-item" data-view="stats"><span class="nav-ico">📊</span><span>Статистика</span></button>
+      <button class="nav-item" data-view="leads"><span class="nav-ico">🎯</span><span>Лиды</span><span class="nav-badge" id="badge-leads"></span></button>
       <button class="nav-item" data-view="repeat"><span class="nav-ico">🔁</span><span>Повторные</span><span class="nav-badge" id="badge-repeat"></span></button>
       <button class="nav-item" data-view="mailing"><span class="nav-ico">✉️</span><span>Рассылка</span></button>
       <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span>Настройки</span></button>
@@ -42,6 +43,7 @@
       <h1 class="topbar-title" id="topbar-title">Главная</h1>
       <div class="topbar-actions">
         <button class="btn btn-ghost" id="btn-global-search" title="Поиск">🔍</button>
+        <button class="btn btn-ghost only-mobile" id="btn-leads-mobile" title="Лиды">🎯</button>
         <button class="btn btn-ghost only-mobile" id="btn-repeat-mobile" title="Повторные продажи">🔁</button>
         <button class="btn btn-ghost only-mobile" id="btn-stats-mobile" title="Статистика">📊</button>
         <button class="btn btn-ghost only-mobile" id="btn-mailing-mobile" title="Рассылка">✉️</button>
@@ -159,6 +161,23 @@
       <div class="card">
         <div class="card-head"><h2>🧑‍💼 По сотрудникам</h2><span class="card-hint">выплаты из сделок за выбранный период</span></div>
         <div class="import-table-wrap"><table class="import-table" id="stats-staff"></table></div>
+      </div>
+    </section>
+
+    <!-- Leads -->
+    <section class="view" id="view-leads">
+      <div class="card" style="background:linear-gradient(135deg,#fff7ed,#fef2f2);border:1px solid #fed7aa">
+        <div class="card-head"><h2>🎯 Входящие лиды</h2></div>
+        <p class="muted" style="margin:0">Программа поиска сама находит людей, которые ищут Деда Мороза в ВКонтакте и Telegram, и тендеры на утренники. Ответьте в один тап: «Копировать ответ» → «Автор» → вставьте в чат. Меняйте статус — так видно, какой источник приносит брони.</p>
+      </div>
+      <div id="leads-metric" class="kpi-grid"></div>
+      <div class="toolbar">
+        <div class="btn-row" id="leads-filters"></div>
+      </div>
+      <div id="leads-list"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-head"><h2>📈 Источники</h2><span class="card-hint">сколько лидов и броней даёт каждый</span></div>
+        <div id="leads-sources" class="list"></div>
       </div>
     </section>
 
@@ -299,6 +318,7 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/cloud.js"></script>
+<script src="js/leads.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

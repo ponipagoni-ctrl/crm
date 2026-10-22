@@ -284,7 +284,7 @@ function toast(msg, type = '') {
 /* ---------------- routing ---------------- */
 const VIEW_TITLES = {
   dashboard: 'Главная', clients: 'Клиенты', deals: 'Сделки',
-  calendar: 'Календарь', stats: 'Статистика', repeat: 'Повторные продажи',
+  calendar: 'Календарь', stats: 'Статистика', repeat: 'Повторные продажи', leads: 'Лиды',
   mailing: 'Рассылка', settings: 'Настройки',
 };
 function showView(name) {
@@ -305,6 +305,7 @@ function render() {
   if (currentView === 'calendar') renderCalendar();
   if (currentView === 'stats') renderStats();
   if (currentView === 'repeat') renderRepeat();
+  if (currentView === 'leads') Leads.render();
   if (currentView === 'mailing') renderMailing();
   if (currentView === 'settings') renderSettings();
 }
@@ -2354,7 +2355,10 @@ function startApp(loaded) {
   bindEvents();
   uiStarted = true;
   maybeAutoBackup();
-  showView('dashboard');
+  Leads.bind();
+  Leads.start();
+  // ссылка из бота ведёт сразу в лиды: …/crm/#leads
+  showView(location.hash === '#leads' ? 'leads' : 'dashboard');
 }
 
 function init() {
@@ -2384,6 +2388,7 @@ function bindEvents() {
   document.getElementById('btn-mailing-mobile').addEventListener('click', () => showView('mailing'));
   document.getElementById('btn-stats-mobile').addEventListener('click', () => showView('stats'));
   document.getElementById('btn-repeat-mobile').addEventListener('click', () => showView('repeat'));
+  document.getElementById('btn-leads-mobile').addEventListener('click', () => showView('leads'));
   document.getElementById('btn-add-task').addEventListener('click', () => openTaskForm());
 
   // единый обработчик кнопок мессенджеров (WhatsApp/Telegram/MAX)

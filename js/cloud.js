@@ -326,6 +326,7 @@ const Cloud = (() => {
   return {
     isConfigured, begin, persist, logout, resetPassword,
     active: () => active,
+    db: () => db,
     userEmail: () => (auth && auth.currentUser ? auth.currentUser.email : ''),
   };
 })();
