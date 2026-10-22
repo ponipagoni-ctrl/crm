@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Монитор запросов «ищу Деда Мороза».
 
-Читает открытые Telegram-каналы из sources.json (через t.me/s/<username>),
-находит запросы клиентов по ключевым словам и шлёт их в Telegram-бот
+Читает открытые Telegram-каналы из sources.json (через t.me/s/<username>)
+и ищет по всем открытым постам ВКонтакте (newsfeed.search), находит
+запросы клиентов по ключевым словам и шлёт их в Telegram-бот
 с готовым черновиком ответа.
 
 Переменные окружения (секреты GitHub):
   TELEGRAM_BOT_TOKEN — токен бота от @BotFather
   TELEGRAM_CHAT_ID   — куда слать находки (ваш chat id)
+  VK_SERVICE_TOKEN   — сервисный ключ приложения ВКонтакте
   SEEN_FILE          — файл с уже отправленными постами (кэш между запусками)
   MAX_AGE_DAYS       — не старше скольких дней брать посты (по умолчанию 3)
 """
@@ -16,6 +18,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -24,6 +27,8 @@ from html.parser import HTMLParser
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCES = os.path.join(HERE, 'sources.json')
 CALC_URL = 'https://ponipagoni-ctrl.github.io/crm/calculator/'
+VK_API = 'https://api.vk.com/method/'
+VK_VERSION = '5.199'
 UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 
 
@@ -120,6 +125,76 @@ def draft_reply(d):
     return ' '.join(parts)
 
 
+# ─── ВКонтакте ────────────────────────────────────────────────────────
+def vk_call(token, method, **params):
+    params.update(access_token=token, v=VK_VERSION)
+    r = json.loads(fetch(VK_API + method + '?' + urllib.parse.urlencode(params)))
+    time.sleep(0.4)  # лимит VK — 3 запроса в секунду
+    if 'error' in r:
+        raise RuntimeError(f"VK {r['error'].get('error_code')}: {r['error'].get('error_msg')}")
+    return r['response']
+
+
+def is_local(text, markers):
+    t = norm(text)
+    return any(norm(m) in t for m in markers)
+
+
+def vk_posts(token, vk, since):
+    """Посты из поиска по всему ВК (только Екатеринбург) и со стен групп из базы.
+
+    Возвращает (posts, report): posts — dict с key/url/text/date/author/source.
+    """
+    posts, report = {}, []
+
+    found = local = 0
+    for q in vk['queries']:
+        try:
+            r = vk_call(token, 'newsfeed.search', q=q, count=200, extended=1, start_time=int(since.timestamp()))
+        except Exception as e:
+            report.append(f'✗ VK поиск «{q}»: {e}')
+            continue
+        groups = {g['id']: g for g in r.get('groups', [])}
+        for it in r.get('items', []):
+            found += 1
+            g = groups.get(-it['owner_id'], {})
+            place = f"{g.get('name', '')} {g.get('screen_name', '')}"
+            if not is_local(it.get('text', '') + ' ' + place, vk['city_markers']):
+                continue
+            local += 1
+            key = f"vk:{it['owner_id']}_{it['id']}"
+            posts[key] = vk_item(it, key, g.get('name') or 'ВКонтакте')
+    report.append(f'✓ VK поиск: постов {found}, из Екатеринбурга {local}')
+
+    for grp in vk.get('groups', []):
+        if not grp.get('id') or grp.get('status') == 'dead':
+            continue
+        try:
+            r = vk_call(token, 'wall.get', domain=grp['id'], count=50)
+        except Exception as e:
+            report.append(f"✗ VK {grp['id']}: {e}")
+            continue
+        items = [it for it in r.get('items', []) if it.get('date', 0) >= since.timestamp()]
+        for it in items:
+            key = f"vk:{it['owner_id']}_{it['id']}"
+            posts[key] = vk_item(it, key, grp['name'])
+        report.append(f"✓ VK {grp['id']}: свежих постов {len(items)}")
+
+    return list(posts.values()), report
+
+
+def vk_item(it, key, source):
+    author_id = it.get('signer_id') or it.get('from_id') or 0
+    return {
+        'key': key,
+        'url': f"https://vk.com/wall{it['owner_id']}_{it['id']}",
+        'text': it.get('text', ''),
+        'date': datetime.fromtimestamp(it.get('date', 0), timezone.utc),
+        'author': f'https://vk.com/id{author_id}' if author_id > 0 else None,
+        'source': f'ВК · {source}',
+    }
+
+
 # ─── Telegram-бот ─────────────────────────────────────────────────────
 def tg_api(token, method, params):
     data = urllib.parse.urlencode(params).encode()
@@ -153,7 +228,9 @@ def notify(token, chat_id, lead):
         f"{head} · {lead['source']}\n"
         f"{lead['date_h']}\n\n"
         f"{text}\n\n"
-        f"🔗 {lead['url']}\n\n"
+        f"🔗 {lead['url']}\n"
+        + (f"👤 Автор: {lead['author']}\n" if lead.get('author') else '')
+        + "\n"
         f"✍️ Черновик ответа:\n{lead['draft']}"
     )
     tg_api(token, 'sendMessage', {'chat_id': chat_id, 'text': body, 'disable_web_page_preview': 'true'})
@@ -182,6 +259,24 @@ def main():
         seen = set()
 
     leads, report = [], []
+
+    def add_lead(key, url, text, date, source, author=None):
+        if key in seen:
+            return
+        level = classify(text, kw)
+        if not level:
+            return
+        leads.append({
+            'level': level,
+            'source': source,
+            'url': url,
+            'post': key,
+            'author': author,
+            'text': text,
+            'date_h': date.astimezone(timezone(timedelta(hours=5))).strftime('%d.%m %H:%M'),
+            'draft': draft_reply(details(text)),
+        })
+
     for s in telegram_sources(src):
         name = s['username']
         try:
@@ -195,22 +290,17 @@ def main():
             if now - date > max_age:
                 continue
             fresh += 1
-            if p['post'] in seen:
-                continue
-            level = classify(p['text'], kw)
-            if not level:
-                continue
-            d = details(p['text'])
-            leads.append({
-                'level': level,
-                'source': f'@{name}',
-                'url': f"https://t.me/{p['post']}",
-                'post': p['post'],
-                'text': p['text'],
-                'date_h': date.astimezone(timezone(timedelta(hours=5))).strftime('%d.%m %H:%M'),
-                'draft': draft_reply(d),
-            })
+            add_lead(p['post'], f"https://t.me/{p['post']}", p['text'], date, f'@{name}')
         report.append(f"{'✓' if posts else '·'} @{name}: постов {len(posts)}, свежих {fresh}")
+
+    vk_token = os.environ.get('VK_SERVICE_TOKEN', '').strip()
+    if vk_token:
+        vk_found, vk_report = vk_posts(vk_token, src['vk'], now - max_age)
+        report += vk_report
+        for p in vk_found:
+            add_lead(p['key'], p['url'], p['text'], p['date'], p['source'], p['author'])
+    else:
+        report.append('· VK: ключ VK_SERVICE_TOKEN не задан')
 
     print('\n'.join(report))
     print(f'найдено новых запросов: {len(leads)}')

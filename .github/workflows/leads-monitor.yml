@@ -36,6 +36,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VK_SERVICE_TOKEN: ${{ secrets.VK_SERVICE_TOKEN }}
           SEEN_FILE: .leads-state/seen.json
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
         run: python3 leads/monitor.py
