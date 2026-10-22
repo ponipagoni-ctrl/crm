@@ -11,11 +11,7 @@ on:
         type: boolean
         default: true
       digest:
-        description: 'Прислать сводку (тендеры, новые источники) прямо сейчас'
-        type: boolean
-        default: false
-      tenders_only:
-        description: 'Только проверить тендеры и вывести в лог (в бот ничего не слать)'
+        description: 'Прислать сводку (заявки за 3 дня, новые источники) прямо сейчас'
         type: boolean
         default: false
       crm_test:
@@ -59,6 +55,5 @@ jobs:
           STATE_DIR: .leads-state
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
           FORCE_DIGEST: ${{ inputs.digest && '1' || '0' }}
-          TENDERS_ONLY: ${{ inputs.tenders_only && '1' || '0' }}
           CRM_TEST: ${{ inputs.crm_test && '1' || '0' }}
         run: python3 leads/monitor.py

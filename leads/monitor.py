@@ -12,7 +12,6 @@
 
 Раз в 3 дня (или по кнопке запуска с digest=true) — сводка в бот:
   • заявки за 3 дня и состояние источников;
-  • новые тендеры на утренники и новогодние представления (Свердловская обл.);
   • новые источники клиентов на согласование — с кнопками.
 
 Переменные окружения (секреты GitHub):
@@ -20,12 +19,11 @@
   TELEGRAM_CHAT_ID   — куда слать находки (ваш chat id)
   VK_SERVICE_TOKEN   — сервисный ключ приложения ВКонтакте
   FIREBASE_SERVICE_ACCOUNT — JSON-ключ сервисного аккаунта Firebase: находки
-                       и тендеры пишутся в коллекцию `leads` CRM (раздел «Лиды»)
+                       пишутся в коллекцию `leads` CRM (раздел «Лиды»)
   STATE_DIR          — папка с состоянием между запусками (кэш Actions)
   MAX_AGE_DAYS       — не старше скольких дней брать посты (по умолчанию 3)
   SEND_REPORT=1      — прислать отчёт о проверке источников
   FORCE_DIGEST=1     — прислать сводку раз-в-3-дня прямо сейчас
-  TENDERS_ONLY=1     — только проверить тендеры и вывести их в лог (без бота)
   CRM_TEST=1         — записать в CRM тестовый лид (проверка связи)
 """
 import html
@@ -37,7 +35,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 
@@ -183,7 +180,7 @@ def load_state(state_dir):
         except (OSError, ValueError):
             st['seen'] = []
     for k, v in (('approved', {}), ('rejected', []), ('candidates', {}), ('lead_log', []),
-                 ('tenders_seen', []), ('tg_offset', 0), ('last_digest', None)):
+                 ('tg_offset', 0), ('last_digest', None)):
         st.setdefault(k, v)
     return st
 
@@ -191,7 +188,6 @@ def load_state(state_dir):
 def save_state(state_dir, st):
     os.makedirs(state_dir, exist_ok=True)
     st['seen'] = st['seen'][-5000:]
-    st['tenders_seen'] = st['tenders_seen'][-2000:]
     st['lead_log'] = st['lead_log'][-2000:]
     json.dump(st, open(os.path.join(state_dir, 'state.json'), 'w', encoding='utf-8'), ensure_ascii=False)
 
@@ -314,69 +310,6 @@ def vk_collect(token, src, st, since, stats):
 def looks_like_business(name, vk):
     n = norm(name)
     return any(norm(w) in n for w in vk.get('business_words', []))
-
-
-# ─── Тендеры ──────────────────────────────────────────────────────────
-def tender_match(title, cfg):
-    t = norm(title)
-    return (any(re.search(p, t) for p in cfg['include'])
-            and not any(norm(w) in t for w in cfg['exclude']))
-
-
-def tenders_rostender(cfg, errors):
-    out = []
-    for page in (1, 2, 3):
-        url = 'https://rostender.info/category/tendery-provedenie-novogo-goda' + (f'?page={page}' if page > 1 else '')
-        try:
-            body = fetch(url)
-        except Exception as e:
-            errors.append(f'РосТендер: {e}')
-            break
-        for href, title in re.findall(r'<a[^>]+href="([^"]*/region/sverdlovskaya-oblast/[^"]*?\d+-tender-[^"]*)"[^>]*>(.*?)</a>', body, re.S):
-            title = html.unescape(re.sub(r'<[^>]+>', ' ', title)).strip()
-            title = re.sub(r'\s+', ' ', title)
-            if title and tender_match(title, cfg):
-                link = href if href.startswith('http') else 'https://rostender.info' + href
-                out.append({'id': link, 'title': title, 'url': link, 'site': 'РосТендер', 'extra': ''})
-    return out
-
-
-def tenders_eis(cfg, errors):
-    """ЕИС zakupki.gov.ru, RSS расширенного поиска. Только активные закупки."""
-    out = []
-    for q in cfg['eis_queries']:
-        url = ('https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?'
-               + urllib.parse.urlencode({'searchString': q, 'morphology': 'on', 'af': 'on',
-                                         'sortBy': 'UPDATE_DATE', 'sortDirection': 'false',
-                                         'recordsPerPage': '_50'}))
-        try:
-            root = ET.fromstring(fetch(url, timeout=30))
-        except ET.ParseError as e:
-            errors.append(f'ЕИС «{q}»: ответ не похож на RSS ({e})')
-            continue
-        except Exception as e:
-            errors.append(f'ЕИС: сайт не ответил ({e})')
-            break  # сайт недоступен — остальные запросы тоже не пройдут
-        for item in root.iter('item'):
-            title = (item.findtext('title') or '').strip()
-            link = (item.findtext('link') or '').strip()
-            desc = html.unescape(re.sub(r'<[^>]+>', ' ', item.findtext('description') or ''))
-            desc = re.sub(r'\s+', ' ', desc)
-            if not link or not is_local(desc, cfg['region_markers']):
-                continue
-            if not tender_match(title + ' ' + desc, cfg):
-                continue
-            if link.startswith('/'):
-                link = 'https://zakupki.gov.ru' + link
-            if any(t['id'] == link for t in out):
-                continue  # одна закупка находится по нескольким запросам
-            price = re.search(r'Начальная цена[^0-9]*([\d\s.,]+)', desc)
-            till = re.search(r'Окончани\w+ подачи заявок[^0-9]*([\d.]+)', desc)
-            extra = ' · '.join(x for x in (
-                f'цена {price.group(1).strip()} ₽' if price else '',
-                f'заявки до {till.group(1)}' if till else '') if x)
-            out.append({'id': link, 'title': desc[:200] or title, 'url': link, 'site': 'ЕИС', 'extra': extra})
-    return out
 
 
 # ─── CRM (Firestore) ──────────────────────────────────────────────────
@@ -527,12 +460,7 @@ def source_report(stats, new_leads):
 
 
 # ─── Сводка раз в 3 дня ───────────────────────────────────────────────
-def digest(token, chat_id, src, st, stats, now, crm=None):
-    cfg = src['b2b_tenders']
-    t_errors = []
-    tenders = tenders_eis(cfg, t_errors) + tenders_rostender(cfg, t_errors)
-    new_tenders = [t for t in {t['id']: t for t in tenders}.values() if t['id'] not in st['tenders_seen']]
-
+def digest(token, chat_id, st, stats, now):
     since = now - DIGEST_EVERY
     leads_3d = [x for x in st['lead_log'] if datetime.fromisoformat(x['at']) >= since]
     by_src = {}
@@ -544,28 +472,6 @@ def digest(token, chat_id, src, st, stats, now, crm=None):
     lines += [f"  • {k}: {v}" for k, v in sorted(by_src.items(), key=lambda kv: -kv[1])]
     lines += ['', 'Источники сейчас:', source_report(stats, stats.get('new_leads', 0))]
     send(token, chat_id, '\n'.join(lines))
-
-    if new_tenders:
-        msg = ['📑 Новые тендеры по вашей нише (Свердловская область):', '']
-        for t in new_tenders[:15]:
-            msg.append(f"• {t['title']}" + (f"\n  {t['extra']}" if t['extra'] else '') + f"\n  {t['site']}: {t['url']}")
-        send(token, chat_id, '\n'.join(msg))
-    else:
-        send(token, chat_id, '📑 Тендеры: новых закупок на утренники, Деда Мороза и новогодние представления '
-                             'по Свердловской области не найдено.'
-             + ('\n\nНе удалось проверить:\n' + '\n'.join(t_errors) if t_errors else ''))
-    for t in new_tenders:
-        st['tenders_seen'].append(t['id'])
-        if crm:
-            try:
-                crm_add(crm, 'tender:' + t['id'], {
-                    'kind': 'tender', 'level': 'tender', 'source': f"Тендер · {t['site']}", 'text': t['title'],
-                    'extra': t['extra'], 'url': t['url'], 'status': 'new', 'foundAt': ms(now)})
-            except Exception as e:
-                print('CRM tender error:', e)
-    print(f'сводка: тендеров найдено {len(tenders)}, новых {len(new_tenders)}')
-    for e in t_errors:
-        print('  тендеры ✗', e)
 
     fresh = sorted(((k, c) for k, c in st['candidates'].items() if not c['proposed']),
                    key=lambda kc: -len(kc[1]['posts']))[:8]
@@ -589,21 +495,8 @@ def digest(token, chat_id, src, st, stats, now, crm=None):
 
 
 # ─── Основной проход ──────────────────────────────────────────────────
-def check_tenders_only(src):
-    cfg, errors = src['b2b_tenders'], []
-    for name, fn in (('ЕИС', tenders_eis), ('РосТендер', tenders_rostender)):
-        found = fn(cfg, errors)
-        print(f'{name}: подходящих закупок {len(found)}')
-        for t in found:
-            print(f"  • {t['title'][:150]} {t['extra']}\n    {t['url']}")
-    for e in errors:
-        print('✗', e)
-
-
 def main():
     src = json.load(open(SOURCES, encoding='utf-8'))
-    if os.environ.get('TENDERS_ONLY') == '1':
-        return check_tenders_only(src)
     kw = src['keywords']
     token = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
@@ -725,7 +618,7 @@ def main():
         last = st['last_digest'] and datetime.fromisoformat(st['last_digest'])
         if os.environ.get('FORCE_DIGEST') == '1' or not last or now - last >= DIGEST_EVERY:
             try:
-                digest(token, chat_id, src, st, stats, now, crm)
+                digest(token, chat_id, st, stats, now)
             except Exception as e:
                 print('digest error:', e)
 

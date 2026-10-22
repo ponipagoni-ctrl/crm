@@ -1,7 +1,7 @@
 /* ============================================================
    Входящие лиды — находки программы поиска клиентов (leads/monitor.py).
 
-   Программа поиска сама кладёт найденные запросы и тендеры в коллекцию
+   Программа поиска сама кладёт найденные запросы в коллекцию
    Firestore `leads`. Здесь — список с фильтрами, ответ в один тап,
    статусы, перевод лида в клиента + сделку и аналитика по источникам.
    Работает только в облачном режиме (Firebase).
@@ -78,8 +78,9 @@ const Leads = (() => {
       <div class="kpi"><div class="kpi-num" style="color:var(--success)">${booked}</div><div class="kpi-label">броней</div></div>
       <div class="kpi"><div class="kpi-num">${real ? Math.round(booked / real * 100) + '%' : '—'}</div><div class="kpi-label">конверсия в бронь</div></div>`;
 
+    const tenders = list.filter(l => l.kind === 'tender').length;
     const chips = [['active', `В работе (${active.length})`], ['new', `Новые (${list.filter(l => st(l) === 'new').length})`],
-      ['tender', `📑 Тендеры (${list.filter(l => l.kind === 'tender').length})`], ['all', `Все (${list.length})`]];
+      ...(tenders ? [['tender', `📑 Тендеры (${tenders})`]] : []), ['all', `Все (${list.length})`]];
     document.getElementById('leads-filters').innerHTML = chips.map(([k, label]) =>
       `<button class="btn btn-sm ${filter === k ? 'btn-primary' : ''}" data-lfilter="${k}">${label}</button>`).join('');
 
