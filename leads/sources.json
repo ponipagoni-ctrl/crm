@@ -1,0 +1,107 @@
+{
+  "_about": "База мест, где клиенты ищут Деда Мороза/Снегурочку/ростовые куклы в Екатеринбурге. Собрана 22.10.2026 по открытым поисковым данным. status: 'unverified' — найден в каталогах/поиске, активность проверит монитор при первом запуске; 'verified' — монитор нашёл свежие посты; 'dead' — отключить.",
+  "city": "Екатеринбург",
+  "season": { "start": "11-01", "peak": ["11-20", "12-28"], "end": "01-10" },
+
+  "vk": {
+    "_how": "Главный источник. VK API newsfeed.search ищет по ВСЕМ открытым постам ВКонтакте — список групп не обязателен. Ключи — из keywords.search_phrases, фильтр по городу через текст/гео. Группы, где нашлось ≥2 запросов, автоматически добавляются в groups.",
+    "global_search": true,
+    "groups": [
+      { "id": "baraholkatutekb", "name": "Барахолка Екатеринбург", "members": 20700, "type": "барахолка, есть раздел «Услуги»", "status": "unverified" },
+      { "id": null, "name": "Ю-мама (группа форума u-mama.ru)", "type": "мамы", "status": "unverified", "note": "адрес группы найти поиском ВК при первом запуске" }
+    ]
+  },
+
+  "telegram": {
+    "_how": "Открытые КАНАЛЫ читаются без аккаунта через t.me/s/<username>. ЧАТЫ (группы) так не читаются — нужен отдельный аккаунт-читатель, только чтение, без рассылок.",
+    "channels": [
+      { "username": "yekaterinburg_podslushal", "name": "Екатеринбург | События | Подслушано", "members": 35976, "type": "город", "status": "unverified" },
+      { "username": "ekaterinburg0", "name": "Типичный Екатеринбург Подслушано", "type": "город", "status": "unverified" },
+      { "username": "podsluhanokoltcovo", "name": "Подслушано в Кольцово", "type": "район", "status": "unverified" },
+      { "username": "zhbiekb", "name": "ЖБИ Екатеринбург", "type": "район", "status": "unverified" },
+      { "username": "sortekb", "name": "Сортировка Екатеринбург", "type": "район", "status": "unverified" }
+    ],
+    "chats": [
+      { "username": "locality_ekb", "name": "Чат районов Екатеринбурга", "type": "город, общение", "status": "unverified" },
+      { "username": "baraholkaekb", "name": "Барахолка Екатеринбург", "members": 6300, "type": "барахолка", "status": "unverified" },
+      { "username": "baraholka_eburg", "name": "Барахолка / Объявления Екатеринбург", "members": 2850, "type": "барахолка", "status": "unverified" },
+      { "username": "ekb_chat_ads", "name": "Екатеринбург Объявления (услуги, работа, барахолка)", "type": "объявления", "status": "unverified" },
+      { "username": "baraholkaekaterinburg_chat", "name": "Барахолка Екатеринбург (чат)", "type": "барахолка", "status": "unverified" },
+      { "username": "baraholka_ekaterinburg_chat", "name": "Барахолка Екатеринбург", "type": "барахолка", "status": "unverified" },
+      { "invite": "https://t.me/+ZO-a78LYzJE1OWYy", "name": "Чат мамочек Екатеринбурга", "type": "мамы", "status": "unverified", "note": "ссылка из каталога telegid.me" },
+      { "username": null, "name": "МАМЫ И ДЕТИ | ЕКАТЕРИНБУРГ", "members": 1095, "type": "мамы", "status": "unverified", "note": "найти по названию в поиске Telegram" }
+    ],
+    "catalogs_for_expansion": [
+      "https://telegid.me/catalog/russia/ekaterinburg",
+      "https://tgstat.ru/en/ratings/chats/babies",
+      "https://tg-cat.com/?search=екатеринбург&type=supergroup",
+      "https://chatdoma.ru/category/yekaterinburg-i-oblast/",
+      "https://ekaterinburg.sosedi.chat/"
+    ]
+  },
+
+  "ok": [
+    { "url": "https://ok.ru/baraholkaekaterinburg", "name": "Барахолка Екатеринбург Объявления", "status": "unverified" },
+    { "url": "https://ok.ru/group/53387365187754", "name": "Барахолка Екатеринбург (продажа, обмен)", "status": "unverified" }
+  ],
+
+  "forums": [
+    { "url": "https://u-mama.ru/forum/gossip/newyear/", "name": "Ю-мама, раздел «Новый год»", "note": "крупнейший родительский форум ЕКБ, темы про Деда Мороза на дом есть каждый год" }
+  ],
+
+  "order_platforms": {
+    "_how": "Площадки, где клиенты САМИ оставляют заказ, а исполнители откликаются. Это не мониторинг, а регистрация исполнителем — заявки приходят уведомлениями.",
+    "list": [
+      { "name": "Профи.ру", "url": "https://profi.ru/geo-ekt/artist/newyear/", "competitors": 32 },
+      { "name": "Яндекс Услуги", "url": "https://uslugi.yandex.ru/54-yekaterinburg/category?text=дед+мороз+для+детей", "competitors": 12, "note": "цены конкурентов от 4 000 ₽" },
+      { "name": "YouDo", "url": "https://youdo.com", "note": "задания «Дед Мороз» от частных лиц" },
+      { "name": "Авито Услуги", "url": "https://www.avito.ru/ekaterinburg/predlozheniya_uslug", "note": "объявление + ответы на входящие" },
+      { "name": "2ГИС", "url": "https://2gis.ru/ekaterinburg/search/Услуги Деда Мороза/rubricId/111573", "note": "карточка компании в рубрике «Услуги Деда Мороза»" },
+      { "name": "Zoon", "url": "https://zoon.ru/ekb/entertainment/type/uslugi_deda_moroza/" }
+    ]
+  },
+
+  "b2b_tenders": {
+    "_how": "Детсады, школы, соцучреждения и компании публикуют закупки на утренники и корпоративы. Это прямые запросы с бюджетом (пример: утренники — 65 000 ₽). Проверять раз в день.",
+    "list": [
+      { "name": "ЕИС Закупки", "url": "https://zakupki.gov.ru", "query": "новогодний утренник | Дед Мороз | новогоднее представление", "region": "Свердловская область" },
+      { "name": "РосТендер — Новый год", "url": "https://rostender.info/category/tendery-provedenie-novogo-goda" },
+      { "name": "Инитпро — праздники ЕКБ", "url": "https://initpro.ru/region-categories/ekaterinburg/organizacziya-prazdnikov-i-drugix-meropriyatij/" },
+      { "name": "TenderGuru — новогодние мероприятия", "url": "https://www.tenderguru.ru/tematiki_tenderov/tendery-na-novogodnie-meropriyatiya" },
+      { "name": "B2B-Center", "url": "https://www.b2b-center.ru" }
+    ]
+  },
+
+  "keywords": {
+    "search_phrases": [
+      "дед мороз", "деда мороза", "деду морозу", "снегурочка", "снегурочку",
+      "ростовые куклы", "ростовую куклу", "новогодний аниматор", "аниматоры на новый год"
+    ],
+    "hot": [
+      "ищу", "ищем", "нужен", "нужна", "нужны", "посоветуйте", "порекомендуйте", "подскажите",
+      "кто может", "кто знает", "кто свободен", "где заказать", "где найти", "сколько стоит",
+      "на дом", "на утренник", "на корпоратив", "в садик", "в детский сад", "срочно", "31 декабря", "30 декабря"
+    ],
+    "warm": [
+      "заказывали", "кто заказывал", "отзывы", "стоит ли", "родительский комитет", "утренник", "ёлка в саду", "елка в саду"
+    ],
+    "negative": [
+      "предлагаем", "приглашаем", "заказывайте", "бронируйте", "акция", "скидка", "наш дед мороз", "наши артисты",
+      "требуется", "вакансия", "кастинг", "ищем актёров", "ищем актеров", "работа дедом морозом",
+      "костюм деда мороза продам", "продам костюм", "аренда костюма", "письмо деду морозу", "почта деда мороза"
+    ]
+  },
+
+  "scoring": {
+    "hot": "есть фраза из search_phrases + фраза из hot (+ дата, район или «срочно» — наивысший приоритет)",
+    "warm": "есть фраза из search_phrases + фраза из warm",
+    "skip": "есть любое слово из negative (реклама конкурентов, вакансии, продажа костюмов)"
+  },
+
+  "expansion": [
+    "VK: группы, где за сезон нашлось ≥2 запросов, добавляются в vk.groups",
+    "Telegram: каналы/чаты, из которых пересылают посты в отслеживаемые источники, проверяются и добавляются",
+    "Каталоги из telegram.catalogs_for_expansion — проходить раз в неделю по тегам «мамы», «районы», «барахолка»",
+    "Источник без единого запроса за 30 дней сезона получает status 'dead'"
+  ]
+}
