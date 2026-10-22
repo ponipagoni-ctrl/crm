@@ -1,0 +1,41 @@
+name: Поиск клиентов (Дед Мороз)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      report:
+        description: 'Прислать в бот отчёт о проверке источников'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leads-monitor
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Уже отправленные посты храним в кэше Actions, а не в репозитории:
+      # репозиторий открытый, а это сообщения реальных людей.
+      - uses: actions/cache@v4
+        with:
+          path: .leads-state
+          key: leads-seen-${{ github.run_id }}
+          restore-keys: leads-seen-
+
+      - name: Проверить источники
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SEEN_FILE: .leads-state/seen.json
+          SEND_REPORT: ${{ inputs.report && '1' || '0' }}
+        run: python3 leads/monitor.py
