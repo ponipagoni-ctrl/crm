@@ -9,6 +9,10 @@ on:
         description: 'Прислать в бот отчёт о проверке источников'
         type: boolean
         default: true
+      digest:
+        description: 'Прислать сводку (тендеры, новые источники) прямо сейчас'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,12 +24,13 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # Уже отправленные посты храним в кэше Actions, а не в репозитории:
-      # репозиторий открытый, а это сообщения реальных людей.
+      # Состояние (отправленные посты, одобренные источники, тендеры) храним
+      # в кэше Actions, а не в репозитории: репозиторий открытый, а это
+      # сообщения реальных людей.
       - uses: actions/cache@v4
         with:
           path: .leads-state
@@ -37,6 +42,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           VK_SERVICE_TOKEN: ${{ secrets.VK_SERVICE_TOKEN }}
-          SEEN_FILE: .leads-state/seen.json
+          STATE_DIR: .leads-state
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
+          FORCE_DIGEST: ${{ inputs.digest && '1' || '0' }}
         run: python3 leads/monitor.py
