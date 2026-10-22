@@ -26,7 +26,7 @@ const STAGES = [
 ];
 const OPEN_STAGES = ['new', 'talk', 'prepaid', 'confirmed'];
 
-const SOURCES = ['Авито', 'ВКонтакте', 'Сарафанное радио', 'Рассылка', 'Повторный клиент', 'Instagram', 'Telegram', 'Другое'];
+const SOURCES = ['Авито', 'ВКонтакте', 'Яндекс Директ', 'ТВ-конкурс', 'Сарафанное радио', 'Рассылка', 'Повторный клиент', 'Instagram', 'Telegram', 'Другое'];
 
 const MAIL_PRESETS = [
   {

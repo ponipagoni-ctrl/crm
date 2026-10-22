@@ -574,6 +574,15 @@ const FMT_NAMES = { home:'Поздравление на дом', corp:'Корп�
 const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
 // Чат для брони
 const TG_LINK = 'https://t.me/marsssellin';
+// Откуда пришёл клиент: метка utm_source в ссылке рекламы (Директ, Авито, ВК, ТВ)
+const UTM_NAMES = { yandex: 'Яндекс', avito: 'Авито', vk: 'ВКонтакте', tv: 'ТВ-конкурс', tg: 'Telegram' };
+const FROM = (() => {
+  try {
+    const u = new URLSearchParams(location.search).get('utm_source');
+    if (u) sessionStorage.setItem('utm_source', u);
+    return UTM_NAMES[u || sessionStorage.getItem('utm_source')] || '';
+  } catch (e) { return ''; }
+})();
 
 /* ─── State ─────────────────────────────────────────────────────── */
 /* ─── Яндекс Метрика: цели ──────────────────────────────────────── */
@@ -742,7 +751,8 @@ function calc() {
     `• ${when}`,
     `• Место: ${zone.name}`,
     `Расчёт на сайте: ${pref}${rub(total)}`,
-    'Точная дата и адрес: '
+    'Точная дата и адрес: ',
+    ...(FROM ? [`(с сайта · ${FROM})`] : [])
   ].join('\n');
 }
 
