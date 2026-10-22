@@ -87,16 +87,30 @@ def norm(s):
 
 
 def classify(text, kw):
+    """'hot' / 'warm' / None.
+
+    Запрос клиента — короткий пост без ссылок, где просьба («ищу»,
+    «посоветуйте»…) стоит рядом с услугой («Деда Мороза»). Длинные посты
+    со ссылками — почти всегда реклама туров, банкетов и конкурентов.
+    """
     t = norm(text)
-    if not any(norm(w) in t for w in kw['search_phrases']):
+    if len(t) > kw.get('max_len', 600) or 'http' in t or 'vk.cc' in t:
         return None
     if any(norm(w) in t for w in kw['negative']):
         return None
-    if any(norm(w) in t for w in kw['hot']):
-        return 'hot'
-    if any(norm(w) in t for w in kw['warm']):
-        return 'warm'
-    return None
+    window = kw.get('window', 60)
+    level = None
+    for phrase in kw['search_phrases']:
+        ph = norm(phrase)
+        start = t.find(ph)
+        while start != -1:
+            near = t[max(0, start - window): start + len(ph) + window]
+            if any(norm(w) in near for w in kw['hot']):
+                return 'hot'
+            if any(norm(w) in near for w in kw['warm']):
+                level = 'warm'
+            start = t.find(ph, start + 1)
+    return level
 
 
 def details(text):
