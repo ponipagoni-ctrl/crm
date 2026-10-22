@@ -345,9 +345,12 @@ def tenders_eis(cfg, errors):
                                          'recordsPerPage': '_50'}))
         try:
             root = ET.fromstring(fetch(url, timeout=30))
-        except Exception as e:
-            errors.append(f'ЕИС «{q}»: {e}')
+        except ET.ParseError as e:
+            errors.append(f'ЕИС «{q}»: ответ не похож на RSS ({e})')
             continue
+        except Exception as e:
+            errors.append(f'ЕИС: сайт не ответил ({e})')
+            break  # сайт недоступен — остальные запросы тоже не пройдут
         for item in root.iter('item'):
             title = (item.findtext('title') or '').strip()
             link = (item.findtext('link') or '').strip()
@@ -496,6 +499,9 @@ def digest(token, chat_id, src, st, stats, now):
              + ('\n\nНе удалось проверить:\n' + '\n'.join(t_errors) if t_errors else ''))
     for t in new_tenders:
         st['tenders_seen'].append(t['id'])
+    print(f'сводка: тендеров найдено {len(tenders)}, новых {len(new_tenders)}')
+    for e in t_errors:
+        print('  тендеры ✗', e)
 
     fresh = sorted(((k, c) for k, c in st['candidates'].items() if not c['proposed']),
                    key=lambda kc: -len(kc[1]['posts']))[:8]
@@ -513,6 +519,7 @@ def digest(token, chat_id, src, st, stats, now):
             c['proposed'] = True
     else:
         send(token, chat_id, '🔎 Новых источников за 3 дня не нашлось.')
+    print(f'сводка: предложено новых источников {len(fresh)}')
 
     st['last_digest'] = now.isoformat()
 
