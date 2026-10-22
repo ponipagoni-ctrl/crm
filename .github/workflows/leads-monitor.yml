@@ -18,6 +18,10 @@ on:
         description: 'Только проверить тендеры и вывести в лог (в бот ничего не слать)'
         type: boolean
         default: false
+      crm_test:
+        description: 'Записать в CRM тестовый лид (проверка связи)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -56,4 +60,5 @@ jobs:
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
           FORCE_DIGEST: ${{ inputs.digest && '1' || '0' }}
           TENDERS_ONLY: ${{ inputs.tenders_only && '1' || '0' }}
+          CRM_TEST: ${{ inputs.crm_test && '1' || '0' }}
         run: python3 leads/monitor.py

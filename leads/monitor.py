@@ -26,6 +26,7 @@
   SEND_REPORT=1      — прислать отчёт о проверке источников
   FORCE_DIGEST=1     — прислать сводку раз-в-3-дня прямо сейчас
   TENDERS_ONLY=1     — только проверить тендеры и вывести их в лог (без бота)
+  CRM_TEST=1         — записать в CRM тестовый лид (проверка связи)
 """
 import html
 import json
@@ -619,8 +620,20 @@ def main():
     crm = None
     try:
         crm = crm_connect()
+        print('CRM: подключение', 'есть' if crm else 'не настроено (нет FIREBASE_SERVICE_ACCOUNT)')
     except Exception as e:
         print('CRM connect error:', e)
+    if crm and os.environ.get('CRM_TEST') == '1':
+        try:
+            crm_add(crm, f'test_{int(now.timestamp())}', {
+                'kind': 'request', 'level': 'warm', 'source': '🧪 Проверка связи с CRM',
+                'text': 'Тестовый лид: программа поиска записала его в CRM. Связь работает — '
+                        'отметьте «Не лид», и он уйдёт из списка.',
+                'url': None, 'author': None, 'draft': 'Это тест — отвечать не нужно.',
+                'status': 'new', 'foundAt': ms(now), 'postDate': ms(now)})
+            print('CRM: тестовый лид записан')
+        except Exception as e:
+            print('CRM test write error:', e)
 
     leads = []
     stats = {'sources': {}, 'errors': []}
