@@ -23,6 +23,7 @@
   MAX_AGE_DAYS       — не старше скольких дней брать посты (по умолчанию 3)
   SEND_REPORT=1      — прислать отчёт о проверке источников
   FORCE_DIGEST=1     — прислать сводку раз-в-3-дня прямо сейчас
+  TENDERS_ONLY=1     — только проверить тендеры и вывести их в лог (без бота)
 """
 import html
 import json
@@ -362,6 +363,8 @@ def tenders_eis(cfg, errors):
                 continue
             if link.startswith('/'):
                 link = 'https://zakupki.gov.ru' + link
+            if any(t['id'] == link for t in out):
+                continue  # одна закупка находится по нескольким запросам
             price = re.search(r'Начальная цена[^0-9]*([\d\s.,]+)', desc)
             till = re.search(r'Окончани\w+ подачи заявок[^0-9]*([\d.]+)', desc)
             extra = ' · '.join(x for x in (
@@ -425,6 +428,7 @@ def process_buttons(token, chat_id, st):
             mark = '❌ Не добавляем'
         else:
             continue
+        print(f'кнопка: {action} {key}')
         msg = cq['message']
         try:
             tg_api(token, 'answerCallbackQuery', {'callback_query_id': cq['id'], 'text': mark})
@@ -525,8 +529,21 @@ def digest(token, chat_id, src, st, stats, now):
 
 
 # ─── Основной проход ──────────────────────────────────────────────────
+def check_tenders_only(src):
+    cfg, errors = src['b2b_tenders'], []
+    for name, fn in (('ЕИС', tenders_eis), ('РосТендер', tenders_rostender)):
+        found = fn(cfg, errors)
+        print(f'{name}: подходящих закупок {len(found)}')
+        for t in found:
+            print(f"  • {t['title'][:150]} {t['extra']}\n    {t['url']}")
+    for e in errors:
+        print('✗', e)
+
+
 def main():
     src = json.load(open(SOURCES, encoding='utf-8'))
+    if os.environ.get('TENDERS_ONLY') == '1':
+        return check_tenders_only(src)
     kw = src['keywords']
     token = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()

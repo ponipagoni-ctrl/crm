@@ -2,7 +2,8 @@ name: Поиск клиентов (Дед Мороз)
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # не ровно :00/:30 — в эти минуты GitHub сильнее всего задерживает расписания
+    - cron: '13,43 * * * *'
   workflow_dispatch:
     inputs:
       report:
@@ -11,6 +12,10 @@ on:
         default: true
       digest:
         description: 'Прислать сводку (тендеры, новые источники) прямо сейчас'
+        type: boolean
+        default: false
+      tenders_only:
+        description: 'Только проверить тендеры и вывести в лог (в бот ничего не слать)'
         type: boolean
         default: false
 
@@ -45,4 +50,5 @@ jobs:
           STATE_DIR: .leads-state
           SEND_REPORT: ${{ inputs.report && '1' || '0' }}
           FORCE_DIGEST: ${{ inputs.digest && '1' || '0' }}
+          TENDERS_ONLY: ${{ inputs.tenders_only && '1' || '0' }}
         run: python3 leads/monitor.py
