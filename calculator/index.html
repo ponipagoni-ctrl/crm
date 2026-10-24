@@ -212,6 +212,9 @@ header p { color: var(--text-muted); font-size: 1em; }
   background: var(--gold); color: var(--blue-deep);
   font-family: inherit; font-weight: 700; cursor: pointer;
 }
+#cookieNote button.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); }
+.cookie-btns { display: flex; gap: 8px; flex-shrink: 0; }
+@media (max-width: 540px) { #cookieNote { flex-direction: column; align-items: stretch; } .cookie-btns > button { flex: 1; } }
 
 /* ── Price result ── */
 #priceResult {
@@ -344,16 +347,19 @@ footer a:hover { text-decoration: underline; }
   .card { padding: 18px; }
 }
 </style>
-<!-- Yandex.Metrika counter -->
+<!-- Yandex.Metrika counter: загружается только после согласия посетителя (152-ФЗ) -->
 <script>
-(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-m[i].l=1*new Date();
-for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
-ym(113728081, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
+function loadMetrika() {
+  if (window.ym) return;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+  m[i].l=1*new Date();
+  for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+  k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+  (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+  ym(113728081, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:false });
+}
+try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catch (e) {}
 </script>
-<noscript><div><img src="https://mc.yandex.ru/watch/113728081" style="position:absolute; left:-9999px;" alt=""></div></noscript>
 <!-- /Yandex.Metrika counter -->
 </head>
 <body>
@@ -520,9 +526,12 @@ ym(113728081, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true
 </div>
 <div id="toast"></div>
 
-<div id="cookieNote" class="hidden">
-  <span>Сайт использует cookie и Яндекс Метрику, чтобы считать посещения и становиться удобнее.</span>
-  <button type="button" onclick="hideCookieNote()">Хорошо</button>
+<div id="cookieNote" class="hidden" role="dialog" aria-label="Согласие на cookie">
+  <span>Можно мы будем использовать cookie и Яндекс Метрику? Они помогают считать посещения и делать сайт удобнее. Калькулятор работает и без них.</span>
+  <div class="cookie-btns">
+    <button type="button" class="secondary" onclick="setCookieConsent(false)">Отказаться</button>
+    <button type="button" onclick="setCookieConsent(true)">Принять</button>
+  </div>
 </div>
 
 <footer>
@@ -530,6 +539,9 @@ ym(113728081, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true
   <p style="margin-top:8px">
     <a href="https://vk.com/makedayekb" target="_blank">ВКонтакте</a> &nbsp;·&nbsp;
     <a href="tel:+79090175865">+7 (909) 017-58-65</a>
+  </p>
+  <p style="margin-top:8px">
+    <a href="#" onclick="showCookieNote(); return false;">Настройки cookie</a> &nbsp;·&nbsp; 0+
   </p>
 </footer>
 
@@ -772,14 +784,20 @@ function bookTg() {
 }
 
 /* ─── Cookie notice ─────────────────────────────────────────────── */
-function hideCookieNote() {
+// Метрика включается только после «Принять»; отказ и отзыв согласия — в любой момент
+function setCookieConsent(ok) {
   document.getElementById('cookieNote').classList.add('hidden');
-  try { localStorage.setItem('cookieOk', '1'); } catch (e) {}
+  try { localStorage.setItem('cookieConsent', ok ? 'yes' : 'no'); } catch (e) {}
+  if (ok) loadMetrika();
+  else if (window.ym) location.reload(); // отозвали согласие — выгружаем счётчик
+}
+function showCookieNote() {
+  document.getElementById('cookieNote').classList.remove('hidden');
 }
 try {
-  if (!localStorage.getItem('cookieOk')) document.getElementById('cookieNote').classList.remove('hidden');
+  if (!localStorage.getItem('cookieConsent')) showCookieNote();
 } catch (e) {
-  document.getElementById('cookieNote').classList.remove('hidden');
+  showCookieNote();
 }
 
 let toastTimer;
