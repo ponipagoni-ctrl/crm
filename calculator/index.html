@@ -212,6 +212,7 @@ header p { color: var(--text-muted); font-size: 1em; }
   background: var(--gold); color: var(--blue-deep);
   font-family: inherit; font-weight: 700; cursor: pointer;
 }
+#cookieNote a { color: var(--gold); }
 #cookieNote button.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--card-border); }
 .cookie-btns { display: flex; gap: 8px; flex-shrink: 0; }
 @media (max-width: 540px) { #cookieNote { flex-direction: column; align-items: stretch; } .cookie-btns > button { flex: 1; } }
@@ -527,7 +528,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
 <div id="toast"></div>
 
 <div id="cookieNote" class="hidden" role="dialog" aria-label="Согласие на cookie">
-  <span>Можно мы будем использовать cookie и Яндекс Метрику? Они помогают считать посещения и делать сайт удобнее. Калькулятор работает и без них.</span>
+  <span>Можно мы будем использовать cookie и Яндекс Метрику? Они помогают считать посещения и делать сайт удобнее. Калькулятор работает и без них. Нажимая «Принять», вы даёте <a href="consent.html" target="_blank">согласие на обработку данных</a> по <a href="privacy.html" target="_blank">политике</a>.</span>
   <div class="cookie-btns">
     <button type="button" class="secondary" onclick="setCookieConsent(false)">Отказаться</button>
     <button type="button" onclick="setCookieConsent(true)">Принять</button>
@@ -541,8 +542,10 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <a href="tel:+79090175865">+7 (909) 017-58-65</a>
   </p>
   <p style="margin-top:8px">
+    <a href="privacy.html">Политика обработки персональных данных</a> &nbsp;·&nbsp;
     <a href="#" onclick="showCookieNote(); return false;">Настройки cookie</a> &nbsp;·&nbsp; 0+
   </p>
+  <p style="margin-top:8px;font-size:.9em">Исполнитель: Макеев Владислав Владимирович, самозанятый, ИНН 667020710197, г. Екатеринбург</p>
 </footer>
 
 <script>
