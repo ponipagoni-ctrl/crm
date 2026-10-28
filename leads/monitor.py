@@ -389,16 +389,30 @@ def answer_start_commands(token):
 
 def process_buttons(token, chat_id, st):
     """Нажатия «✅ Добавить / ❌ Не надо» под предложенными источниками."""
+    # Если у бота включён webhook или его токен читает другая программа,
+    # нажатия до нас не дойдут — пишем это в лог, чтобы было видно сразу
+    try:
+        hook = tg_api(token, 'getWebhookInfo', {}).get('result', {})
+        if hook.get('url'):
+            print(f"кнопки: у бота включён webhook ({hook['url'][:60]}…), нажатия уходят туда, а не в эту программу")
+    except Exception as e:
+        print('getWebhookInfo error:', e)
     try:
         upd = tg_api(token, 'getUpdates', {'offset': st['tg_offset'], 'timeout': 0,
                                            'allowed_updates': json.dumps(['message', 'callback_query'])})
     except Exception as e:
         print('getUpdates error:', e)
         return
-    for u in upd.get('result', []):
+    res = upd.get('result', [])
+    n_cq = sum(1 for u in res if u.get('callback_query'))
+    print(f"кнопки: обновлений от Telegram {len(res)}, из них нажатий {n_cq}, offset {st['tg_offset']}")
+    for u in res:
         st['tg_offset'] = u['update_id'] + 1
         cq = u.get('callback_query')
-        if not cq or str((cq.get('message') or {}).get('chat', {}).get('id')) != str(chat_id):
+        if not cq:
+            continue
+        if str((cq.get('message') or {}).get('chat', {}).get('id')) != str(chat_id):
+            print('кнопки: нажатие из чужого чата — пропускаю')
             continue
         action, _, key = (cq.get('data') or '').partition('|')
         cand = st['candidates'].pop(key, None) or {'name': key, 'url': ''}
