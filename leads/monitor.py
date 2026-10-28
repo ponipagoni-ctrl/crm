@@ -24,6 +24,7 @@
   MAX_AGE_DAYS       — не старше скольких дней брать посты (по умолчанию 3)
   SEND_REPORT=1      — прислать отчёт о проверке источников
   FORCE_DIGEST=1     — прислать сводку раз-в-3-дня прямо сейчас
+  (запуск чаще раза в 14 минут только обрабатывает кнопки, без проверки источников)
   CRM_TEST=1         — записать в CRM тестовый лид (проверка связи)
 """
 import html
@@ -47,6 +48,9 @@ VK_VERSION = '5.199'
 UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 EKB = timezone(timedelta(hours=5))
 DIGEST_EVERY = timedelta(days=3)
+# Запуски идут каждые 5 минут (кнопки), а полная проверка источников — не чаще
+# раза в ~15 минут, чтобы не упираться в лимиты ВКонтакте
+SCAN_EVERY = timedelta(minutes=14)
 
 
 # ─── Загрузка ─────────────────────────────────────────────────────────
@@ -538,6 +542,14 @@ def main():
 
     if token and chat_id:
         process_buttons(token, chat_id, st)
+
+    last_scan = st.get('last_scan') and datetime.fromisoformat(st['last_scan'])
+    forced = any(os.environ.get(k) == '1' for k in ('SEND_REPORT', 'FORCE_DIGEST', 'CRM_TEST'))
+    if last_scan and now - last_scan < SCAN_EVERY and not forced:
+        print(f'только кнопки: полная проверка была {int((now - last_scan).total_seconds() // 60)} мин назад')
+        save_state(state_dir, st)
+        return
+    st['last_scan'] = now.isoformat()
 
     crm = None
     try:
