@@ -397,29 +397,38 @@ def process_buttons(token, chat_id, st):
             print(f"кнопки: у бота включён webhook ({hook['url'][:60]}…), нажатия уходят туда, а не в эту программу")
     except Exception as e:
         print('getWebhookInfo error:', e)
+    # Без offset: Telegram отдаёт все ещё не подтверждённые обновления (хранит их сутки).
+    # Сохранённый между запусками offset не используем: если боту неделю не пишут,
+    # Telegram начинает нумерацию со случайного числа, и новые нажатия могли
+    # оказаться «меньше» сохранённого — тогда программа их не видела.
     try:
-        upd = tg_api(token, 'getUpdates', {'offset': st['tg_offset'], 'timeout': 0,
+        upd = tg_api(token, 'getUpdates', {'timeout': 0,
                                            'allowed_updates': json.dumps(['message', 'callback_query'])})
     except Exception as e:
         print('getUpdates error:', e)
         return
     res = upd.get('result', [])
     n_cq = sum(1 for u in res if u.get('callback_query'))
-    print(f"кнопки: обновлений от Telegram {len(res)}, из них нажатий {n_cq}, offset {st['tg_offset']}")
-    for u in res:
-        st['tg_offset'] = u['update_id'] + 1
+    print(f"кнопки: обновлений от Telegram {len(res)}, из них нажатий {n_cq}")
+    last = {}  # по одному сообщению засчитываем последнее нажатие
+    for u in sorted(res, key=lambda u: u['update_id']):
         cq = u.get('callback_query')
         if not cq:
             continue
         if str((cq.get('message') or {}).get('chat', {}).get('id')) != str(chat_id):
             print('кнопки: нажатие из чужого чата — пропускаю')
             continue
+        last[cq['message']['message_id']] = cq
+    for cq in last.values():
         action, _, key = (cq.get('data') or '').partition('|')
-        cand = st['candidates'].pop(key, None) or {'name': key, 'url': ''}
+        cand = st['candidates'].pop(key, None) or st['approved'].get(key) or {'name': key, 'url': ''}
         if action == 'add':
             st['approved'][key] = {'name': cand['name'], 'url': cand['url']}
+            if key in st['rejected']:
+                st['rejected'].remove(key)
             mark = '✅ Добавлено — читаю этот источник с ближайшего запуска'
         elif action == 'skip':
+            st['approved'].pop(key, None)
             if key not in st['rejected']:
                 st['rejected'].append(key)
             mark = '❌ Не добавляем'
@@ -437,6 +446,12 @@ def process_buttons(token, chat_id, st):
                                               'disable_web_page_preview': 'true'})
         except Exception as e:
             print('editMessageText error:', e)
+    if res:
+        # подтверждаем Telegram, что всё получено, — иначе вернёт эти же нажатия снова
+        try:
+            tg_api(token, 'getUpdates', {'offset': max(u['update_id'] for u in res) + 1, 'timeout': 0})
+        except Exception as e:
+            print('getUpdates confirm error:', e)
 
 
 def notify(token, chat_id, lead):
