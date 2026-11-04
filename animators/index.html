@@ -831,7 +831,7 @@ function oCard(o,showStf){
   const sl=showStf?`<div class="oc-staff">👤 ${assignLabel(o)}</div>`:'';
   return `<div class="oc" onclick="openDet('${o.id}')">
     <div class="oc-hd"><div><div class="oc-date">${fmtD(o.date)}</div><div class="oc-time">⏰ ${o.time}</div></div>${bg}</div>
-    <div class="oc-child">👶 ${o.childName}, ${o.childAge} лет</div>
+    <div class="oc-child">👶 ${o.childName}${o.childAge?', '+o.childAge+' лет':''}</div>
     <div class="oc-addr">📍 ${o.address}</div>${sl}
   </div>`;
 }
@@ -1013,7 +1013,7 @@ function openDet(id){
       <div style="font-size:22px;font-weight:800">${o.childName}</div>${bg}</div>
     <div class="dr"><div class="di">📅</div><div><div class="dl">Дата и время</div><div class="dv">${fmtD(o.date)}, ${o.time}</div></div></div>
     <div class="dr"><div class="di">📍</div><div><div class="dl">Адрес</div><div class="dv">${o.address}</div></div></div>
-    <div class="dr"><div class="di">👶</div><div><div class="dl">Ребёнок</div><div class="dv">${o.childName}, ${o.childAge} лет</div></div></div>
+    <div class="dr"><div class="di">👶</div><div><div class="dl">Ребёнок</div><div class="dv">${o.childName}${o.childAge?', '+o.childAge+' лет':''}</div></div></div>
     <div class="dr"><div class="di">🎁</div><div><div class="dl">Желание</div><div class="dv">${o.wishes||'Не указано'}</div></div></div>
     ${notes}${scen}
     <div class="dr"><div class="di">💰</div><div><div class="dl">Оплата</div><div class="dv" style="color:var(--gold);font-weight:700">${o.payment?o.payment.toLocaleString()+' ₽':'Не указана'}</div></div></div>
