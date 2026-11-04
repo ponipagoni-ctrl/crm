@@ -437,6 +437,7 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:im
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost hidden" id="stf-del" style="flex:1;color:var(--danger)" onclick="delStaffConf()">🗑 Удалить</button>
       <button class="btn btn-ghost" style="flex:1" onclick="cAllM()">Отмена</button>
       <button class="btn btn-red" style="flex:2" onclick="saveStaff()">Сохранить</button>
     </div>
@@ -487,6 +488,7 @@ const ADMIN_PIN='2727';
 const FB_CONFIG={apiKey:"AIzaSyDPjkBJNawCeR_M1iDN8OD3v_fo3cRWu84",authDomain:"makeday-crm.firebaseapp.com",projectId:"makeday-crm",storageBucket:"makeday-crm.firebasestorage.app",messagingSenderId:"945188988680",appId:"1:945188988680:web:2c8f311eeb8eb3d8e16ebd"};
 let D=null,CU=null,aFilter='all',pinBuf='',eOid=null,eSid=null,eKid=null;
 let CLOUD=false,fdb=null,cloudStaff=[],cloudOrders=[];
+const KN_KEY='animator_pro_kn';
 
 const MG=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WD=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
@@ -573,12 +575,24 @@ function save(){ if(CLOUD){saveKn();return} localStorage.setItem(KEY,JSON.string
 function loadKn(){
   const sd=seedData();
   let kn=[],del=[];
-  try{const r=JSON.parse(localStorage.getItem(KEY)||'{}');kn=r.knowledge||[];del=r.deletedKnowledge||[];}catch(e){}
+  try{const r=JSON.parse(localStorage.getItem(KN_KEY)||localStorage.getItem(KEY)||'{}');kn=r.knowledge||[];del=r.deletedKnowledge||[];}catch(e){}
   const have=new Set(kn.map(k=>k.id)),ds=new Set(del);
   sd.knowledge.forEach(k=>{if(!have.has(k.id)&&!ds.has(k.id))kn.push(k)});
   return {knowledge:kn,deletedKnowledge:del};
 }
-function saveKn(){try{localStorage.setItem(KEY,JSON.stringify({knowledge:D.knowledge,deletedKnowledge:D.deletedKnowledge||[]}))}catch(e){}}
+// В облачном режиме храним только базу знаний в отдельном ключе, чтобы НЕ
+// затирать прежний локальный список исполнителей (его можно вернуть в облако).
+function saveKn(){try{localStorage.setItem(KN_KEY,JSON.stringify({knowledge:D.knowledge,deletedKnowledge:D.deletedKnowledge||[]}))}catch(e){}}
+function legacyLocalStaff(){ try{return (JSON.parse(localStorage.getItem(KEY)||'{}').staff)||[]}catch(e){return []} }
+function restoreLegacyStaff(){
+  if(!CLOUD){toast('Облако недоступно');return}
+  const have=new Set((D.staff||[]).map(s=>s.pin));
+  const toAdd=legacyLocalStaff().filter(s=>s.pin&&!have.has(s.pin));
+  if(!toAdd.length){toast('Нечего восстанавливать');return}
+  Promise.all(toAdd.map(s=>cWriteStaff(s.id||uid(),{name:s.name,role:s.role||'dm',pin:s.pin,perms:s.perms||{},updatedAt:new Date().toISOString()})))
+    .then(()=>toast('✓ Восстановлено: '+toAdd.length))
+    .catch(e=>toast('Ошибка: '+e.message));
+}
 // Подтягивает новые статьи базы знаний из seedData() в уже существующие данные
 // пользователя (по id), не трогая то, что он сам изменил или удалил в других разделах.
 function mergeKnowledge(d){
@@ -868,7 +882,10 @@ function rPayrollSummary(){
   D=load();
   const done=D.staff.reduce((a,s)=>a+staffEarnings(s.id).doneSum,0);
   const up=D.staff.reduce((a,s)=>a+staffEarnings(s.id).upSum,0);
-  ge('adm-payroll').innerHTML=`<div class="stats">
+  const have=new Set((D.staff||[]).map(s=>s.pin));
+  const missing=CLOUD?legacyLocalStaff().filter(s=>s.pin&&!have.has(s.pin)).length:0;
+  const restoreBtn=missing?`<button class="btn btn-ghost btn-full" style="margin-bottom:12px" onclick="restoreLegacyStaff()">↩️ Вернуть прежних исполнителей (${missing}) с этого устройства</button>`:'';
+  ge('adm-payroll').innerHTML=restoreBtn+`<div class="stats">
     <div class="stat"><div class="stat-n" style="font-size:20px">${done.toLocaleString()} ₽</div><div class="stat-l">Заработано (выполн.)</div></div>
     <div class="stat"><div class="stat-n" style="font-size:20px">${up.toLocaleString()} ₽</div><div class="stat-l">Ожидается</div></div>
   </div>`;
@@ -1086,6 +1103,7 @@ function openAddStaff(){
   ge('f-sid').value='';ge('f-sname').value='';ge('f-srole').value='dm';ge('f-spin').value='';
   ['f-padd','f-pedit','f-pviewall','f-pstaff','f-pknow'].forEach(x=>ge(x).checked=false);
   ge('stf-earn').classList.add('hidden');
+  ge('stf-del').classList.add('hidden');
   oMod('M-stf');
 }
 function openEditStaff(id){
@@ -1100,7 +1118,19 @@ function openEditStaff(id){
   ge('stf-earn-cnt').textContent=e.count;
   ge('stf-earn-sum').textContent=e.doneSum.toLocaleString()+' ₽';
   ge('stf-earn').classList.remove('hidden');
+  ge('stf-del').classList.remove('hidden');
   oMod('M-stf');
+}
+function delStaffConf(){
+  const id=eSid;if(!id)return;
+  const s=(D.staff||[]).find(x=>x.id===id);
+  ge('conf-txt').textContent=`Исполнитель «${s?s.name:''}» будет удалён.`;
+  ge('conf-ok').onclick=()=>{
+    if(CLOUD){fdb.collection('performers').doc(id).delete().then(()=>{cAllM();toast('Удалён')}).catch(e=>toast('Ошибка: '+e.message));return;}
+    D=load();D.staff=D.staff.filter(x=>x.id!==id);save();cAllM();toast('Удалён');
+    if(isAdmin()){rPayrollSummary();rStaffList('adm-staff')}else rStaffList('sf-staff-list');
+  };
+  cAllM();oMod('M-conf');
 }
 function saveStaff(){
   const id=eSid||uid();
