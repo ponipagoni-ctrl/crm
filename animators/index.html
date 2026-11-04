@@ -365,8 +365,12 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:im
     <div class="mh"></div>
     <div class="mt" id="ord-mtitle">Новый заказ</div>
     <input type="hidden" id="f-oid">
-    <div class="fg"><label class="fl">Сотрудник</label>
-      <select class="inp" id="f-ostf"></select></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">🎅 Дед Мороз</label>
+        <select class="inp" id="f-odm"></select></div>
+      <div class="fg"><label class="fl">❄️ Снегурочка</label>
+        <select class="inp" id="f-osn"></select></div>
+    </div>
     <div class="g2">
       <div class="fg"><label class="fl">Дата</label><input class="inp" type="date" id="f-odate"></div>
       <div class="fg"><label class="fl">Время</label><input class="inp" type="time" id="f-otime"></div>
@@ -383,11 +387,13 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:im
       <input class="inp" type="text" id="f-owish" placeholder="Машинку на пульте управления"></div>
     <div class="fg"><label class="fl">Особенности / важно знать</label>
       <textarea class="inp" id="f-onotes" placeholder="Боится громких звуков..."></textarea></div>
+    <div class="fg"><label class="fl">Сумма заказа (₽)</label>
+      <input class="inp" type="number" id="f-opay" placeholder="3000"></div>
     <div class="g2">
-      <div class="fg"><label class="fl">Сумма заказа (₽)</label>
-        <input class="inp" type="number" id="f-opay" placeholder="3000"></div>
-      <div class="fg"><label class="fl">К выплате сотруднику (₽)</label>
-        <input class="inp" type="number" id="f-opayout" placeholder="600"></div>
+      <div class="fg"><label class="fl">К выплате ДМ (₽)</label>
+        <input class="inp" type="number" id="f-odmpay" placeholder="600"></div>
+      <div class="fg"><label class="fl">К выплате СГ (₽)</label>
+        <input class="inp" type="number" id="f-osnpay" placeholder="600"></div>
     </div>
     <div class="fg"><label class="fl">Сценарий / доп. инструкция</label>
       <textarea class="inp" id="f-oscen" placeholder="Особые пожелания или сценарий..."></textarea></div>
@@ -477,7 +483,10 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:im
 
 <script>
 const KEY='animator_pro_v1';
+const ADMIN_PIN='2727';
+const FB_CONFIG={apiKey:"AIzaSyDPjkBJNawCeR_M1iDN8OD3v_fo3cRWu84",authDomain:"makeday-crm.firebaseapp.com",projectId:"makeday-crm",storageBucket:"makeday-crm.firebasestorage.app",messagingSenderId:"945188988680",appId:"1:945188988680:web:2c8f311eeb8eb3d8e16ebd"};
 let D=null,CU=null,aFilter='all',pinBuf='',eOid=null,eSid=null,eKid=null;
+let CLOUD=false,fdb=null,cloudStaff=[],cloudOrders=[];
 
 const MG=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WD=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
@@ -490,22 +499,86 @@ function isAdmin(){return !!(CU&&CU.type==='admin')}
 function can(perm){return isAdmin()||!!(CU&&CU.type==='staff'&&CU.perms&&CU.perms[perm])}
 function staffEarnings(staffId){
   D=load();
-  const mine=D.orders.filter(o=>o.staffId===staffId);
-  const payoutOf=o=>(o.payout!=null&&o.payout!=='')?Number(o.payout):Math.round((o.payment||0)*0.2);
+  const payoutFor=o=>{
+    const pct=Math.round((o.payment||0)*0.2);
+    if(o.dmId===staffId)return (o.dmPayout!=null&&o.dmPayout!=='')?Number(o.dmPayout):pct;
+    if(o.snId===staffId)return (o.snPayout!=null&&o.snPayout!=='')?Number(o.snPayout):pct;
+    if(o.staffId===staffId)return (o.payout!=null&&o.payout!=='')?Number(o.payout):pct;
+    return 0;
+  };
+  const mine=D.orders.filter(o=>o.dmId===staffId||o.snId===staffId||o.staffId===staffId);
   const done=mine.filter(o=>o.status==='done'),up=mine.filter(o=>o.status==='upcoming');
-  const doneSum=done.reduce((a,o)=>a+payoutOf(o),0),upSum=up.reduce((a,o)=>a+payoutOf(o),0);
+  const doneSum=done.reduce((a,o)=>a+payoutFor(o),0),upSum=up.reduce((a,o)=>a+payoutFor(o),0);
   return{count:mine.length,doneCount:done.length,doneSum,upSum,total:doneSum+upSum};
+}
+
+// ── CLOUD (Firebase, анонимный вход; откат в локальный режим) ──
+function loadFbSdk(){
+  if(typeof firebase!=='undefined')return Promise.resolve();
+  const files=['../js/vendor/firebase-app-compat.js','../js/vendor/firebase-auth-compat.js','../js/vendor/firebase-firestore-compat.js'];
+  return files.reduce((p,src)=>p.then(()=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('sdk '+src));document.head.appendChild(s)})),Promise.resolve());
+}
+function normOrder(o){ if(o.staffId&&!o.dmId&&!o.snId)o.dmId=o.staffId; return o; }
+async function initCloud(){
+  try{
+    await loadFbSdk();
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    await firebase.auth().signInAnonymously();
+    fdb=firebase.firestore();
+    CLOUD=true;
+    fdb.collection('performers').onSnapshot(sn=>{cloudStaff=sn.docs.map(d=>({id:d.id,...d.data()}));reRender();},
+      e=>console.warn('performers:',e.message));
+    fdb.collection('assignments').onSnapshot(sn=>{cloudOrders=sn.docs.map(d=>normOrder({id:d.id,...d.data()}));reRender();},
+      e=>console.warn('assignments:',e.message));
+  }catch(e){CLOUD=false;console.warn('Облако недоступно, локальный режим:',e&&e.message);}
+}
+function cWriteOrder(id,obj){return fdb.collection('assignments').doc(id).set(obj,{merge:true});}
+function cDelOrder(id){return fdb.collection('assignments').doc(id).delete();}
+function cWriteStaff(id,obj){return fdb.collection('performers').doc(id).set(obj,{merge:true});}
+function currentAdminTab(){return ['orders','staff','know','cal'].find(x=>!ge('at-'+x).classList.contains('hidden'))||'orders';}
+function currentStaffTab(){return ['orders','know','staff'].find(x=>{const e=ge('st-'+x);return e&&!e.classList.contains('hidden')})||'orders';}
+function reRender(){
+  if(!CU)return;
+  if(CU.type==='admin'){const t=currentAdminTab();
+    if(t==='orders')rAdmOrders();else if(t==='staff'){rPayrollSummary();rStaffList('adm-staff')}else if(t==='cal')rCalendar();}
+  else{const t=currentStaffTab();
+    if(t==='orders')rStfOrders();else if(t==='staff')rStaffList('sf-staff-list');}
+}
+function pById(id){return (D.staff||[]).find(s=>s.id===id);}
+function assignLabel(o){
+  const dm=o.dmId?pById(o.dmId):null,sn=o.snId?pById(o.snId):null,parts=[];
+  if(dm)parts.push('🎅 '+dm.name); if(sn)parts.push('❄️ '+sn.name);
+  if(!dm&&!sn&&o.staffId){const s=pById(o.staffId);if(s)parts.push((s.role==='dm'?'🎅':'❄️')+' '+s.name);}
+  return parts.length?parts.join('  ·  '):'Не назначен';
+}
+function staffOpts(role,sel){
+  return `<option value="">— не назначен —</option>`+
+    (D.staff||[]).filter(s=>s.role===role).map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
 }
 
 // ── DATA ──
 function load(){
+  if(CLOUD){
+    const kn=loadKn();
+    D={adminPin:ADMIN_PIN,staff:cloudStaff,orders:cloudOrders,knowledge:kn.knowledge,deletedKnowledge:kn.deletedKnowledge};
+    return D;
+  }
   const r=localStorage.getItem(KEY);
   if(!r){D=seed();return D}
   let d;
   try{d=JSON.parse(r)}catch(e){D=seed();return D}
   return mergeKnowledge(d);
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(D))}
+function save(){ if(CLOUD){saveKn();return} localStorage.setItem(KEY,JSON.stringify(D)); }
+function loadKn(){
+  const sd=seedData();
+  let kn=[],del=[];
+  try{const r=JSON.parse(localStorage.getItem(KEY)||'{}');kn=r.knowledge||[];del=r.deletedKnowledge||[];}catch(e){}
+  const have=new Set(kn.map(k=>k.id)),ds=new Set(del);
+  sd.knowledge.forEach(k=>{if(!have.has(k.id)&&!ds.has(k.id))kn.push(k)});
+  return {knowledge:kn,deletedKnowledge:del};
+}
+function saveKn(){try{localStorage.setItem(KEY,JSON.stringify({knowledge:D.knowledge,deletedKnowledge:D.deletedKnowledge||[]}))}catch(e){}}
 // Подтягивает новые статьи базы знаний из seedData() в уже существующие данные
 // пользователя (по id), не трогая то, что он сам изменил или удалил в других разделах.
 function mergeKnowledge(d){
@@ -745,7 +818,7 @@ function rAdmOrders(){
   let os=[...D.orders];
   if(aFilter==='upcoming')os=os.filter(o=>o.status==='upcoming');
   else if(aFilter==='done')os=os.filter(o=>o.status==='done');
-  else if(aFilter!=='all')os=os.filter(o=>o.staffId===aFilter);
+  else if(aFilter!=='all')os=os.filter(o=>o.dmId===aFilter||o.snId===aFilter||o.staffId===aFilter);
   os.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const el=ge('adm-orders');
   if(!os.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Заказов нет</div><div class="empty-s">Нажмите + чтобы добавить</div></div>`;return}
@@ -754,10 +827,8 @@ function rAdmOrders(){
 function setF(f){aFilter=f;rAdmOrders()}
 
 function oCard(o,showStf){
-  const s=D.staff.find(x=>x.id===o.staffId);
-  const sn=s?(s.role==='dm'?'🎅':'❄️')+' '+s.name:'?';
   const bg=o.status==='done'?'<span class="badge b-dn">Выполнен</span>':'<span class="badge b-up">Предстоит</span>';
-  const sl=showStf?`<div class="oc-staff">👤 ${sn}</div>`:'';
+  const sl=showStf?`<div class="oc-staff">👤 ${assignLabel(o)}</div>`:'';
   return `<div class="oc" onclick="openDet('${o.id}')">
     <div class="oc-hd"><div><div class="oc-date">${fmtD(o.date)}</div><div class="oc-time">⏰ ${o.time}</div></div>${bg}</div>
     <div class="oc-child">👶 ${o.childName}, ${o.childAge} лет</div>
@@ -836,7 +907,7 @@ function togK(id){
 let sFilter='all';
 function rStfOrders(){
   D=load();
-  const mine=D.orders.filter(o=>o.staffId===CU.id).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const mine=D.orders.filter(o=>o.dmId===CU.id||o.snId===CU.id||o.staffId===CU.id).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const up=mine.filter(o=>o.status==='upcoming'),dn=mine.filter(o=>o.status==='done');
   ge('sf-sup').textContent=up.length;ge('sf-sdn').textContent=dn.length;
   const el=ge('sf-orders');
@@ -849,7 +920,7 @@ function rStfOrders(){
     let os=[...D.orders];
     if(sFilter==='upcoming')os=os.filter(o=>o.status==='upcoming');
     else if(sFilter==='done')os=os.filter(o=>o.status==='done');
-    else if(sFilter!=='all')os=os.filter(o=>o.staffId===sFilter);
+    else if(sFilter!=='all')os=os.filter(o=>o.dmId===sFilter||o.snId===sFilter||o.staffId===sFilter);
     os.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
     if(!os.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Заказов нет</div></div>`;return}
     el.innerHTML=os.map(o=>oCard(o,true)).join('');
@@ -914,14 +985,19 @@ function renderCalDay(){
 function openDet(id){
   D=load();
   const o=D.orders.find(x=>x.id===id);if(!o)return;
-  const s=D.staff.find(x=>x.id===o.staffId);
-  const sn=s?(s.role==='dm'?'🎅':'❄️')+' '+s.name:'Не назначен';
+  const sn=assignLabel(o);
   const canE=isAdmin()||can('editOrders');
   const canDel=isAdmin();
   const bg=o.status==='done'?'<span class="badge b-dn">✓ Выполнен</span>':'<span class="badge b-up">Предстоит</span>';
-  const notes=o.notes?`<div class="dr"><div class="di">⚠️</div><div><div class="dl">Особенности</div><div class="dv" style="color:#f4c430">${o.notes}</div></div></div>`:'';
+  const notes=o.notes?`<div class="dr"><div class="di">⚠️</div><div><div class="dl">Особенности</div><div class="dv" style="color:#b45309">${o.notes}</div></div></div>`:'';
   const scen=o.scenario?`<div class="dr"><div class="di">📝</div><div><div class="dl">Сценарий</div><div class="dv" style="white-space:pre-wrap;font-size:14px">${o.scenario}</div></div></div>`:'';
-  const payoutRow=(o.payout!=null&&o.payout!=='')?`<div class="dr"><div class="di">💸</div><div><div class="dl">К выплате сотруднику</div><div class="dv" style="color:var(--blue);font-weight:700">${Number(o.payout).toLocaleString()} ₽</div></div></div>`:'';
+  const payoutRow=(()=>{
+    const rows=[],dm=o.dmId?pById(o.dmId):null,sn2=o.snId?pById(o.snId):null,fmtP=v=>Number(v).toLocaleString()+' ₽';
+    if(dm&&o.dmPayout!=null&&o.dmPayout!=='')rows.push('🎅 '+dm.name+': '+fmtP(o.dmPayout));
+    if(sn2&&o.snPayout!=null&&o.snPayout!=='')rows.push('❄️ '+sn2.name+': '+fmtP(o.snPayout));
+    if(!rows.length&&o.payout!=null&&o.payout!=='')rows.push(fmtP(o.payout));
+    return rows.length?`<div class="dr"><div class="di">💸</div><div><div class="dl">К выплате</div><div class="dv" style="color:var(--blue);font-weight:700">${rows.join('<br>')}</div></div></div>`:'';
+  })();
   const stBtn=o.status==='upcoming'?'✓ Отметить выполненным':'↩ Вернуть в работу';
   const actions=canE
     ?`<div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
@@ -942,15 +1018,17 @@ function openDet(id){
     ${notes}${scen}
     <div class="dr"><div class="di">💰</div><div><div class="dl">Оплата</div><div class="dv" style="color:var(--gold);font-weight:700">${o.payment?o.payment.toLocaleString()+' ₽':'Не указана'}</div></div></div>
     ${payoutRow}
-    <div class="dr"><div class="di">👤</div><div><div class="dl">Сотрудник</div><div class="dv">${sn}</div></div></div>
+    <div class="dr"><div class="di">👤</div><div><div class="dl">Исполнители</div><div class="dv">${sn}</div></div></div>
     ${actions}`;
   oMod('M-det');
 }
 
 function togStatus(id){
   D=load();const o=D.orders.find(x=>x.id===id);if(!o)return;
-  o.status=o.status==='upcoming'?'done':'upcoming';save();
-  cAllM();toast(o.status==='done'?'✓ Заказ выполнен':'Возвращён в работу');
+  const ns=o.status==='upcoming'?'done':'upcoming';
+  if(CLOUD){cWriteOrder(id,{status:ns,updatedAt:new Date().toISOString()}).then(()=>{cAllM();toast(ns==='done'?'✓ Заказ выполнен':'Возвращён в работу')}).catch(e=>toast('Ошибка: '+e.message));return;}
+  o.status=ns;save();
+  cAllM();toast(ns==='done'?'✓ Заказ выполнен':'Возвращён в работу');
   if(CU.type==='admin')rAdmOrders();else rStfOrders();
 }
 
@@ -962,8 +1040,8 @@ function openAddOrder(){
   ge('f-odate').value=new Date().toISOString().slice(0,10);
   ge('f-otime').value='14:00';
   ge('f-oaddr').value='';ge('f-ochild').value='';ge('f-oage').value='';
-  ge('f-owish').value='';ge('f-onotes').value='';ge('f-opay').value='3000';ge('f-opayout').value='';ge('f-oscen').value='';
-  ge('f-ostf').innerHTML=D.staff.map(s=>`<option value="${s.id}">${s.role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
+  ge('f-owish').value='';ge('f-onotes').value='';ge('f-opay').value='3000';ge('f-odmpay').value='';ge('f-osnpay').value='';ge('f-oscen').value='';
+  ge('f-odm').innerHTML=staffOpts('dm','');ge('f-osn').innerHTML=staffOpts('sn','');
   cAllM();oMod('M-ord');
 }
 function openEditOrder(id){
@@ -972,22 +1050,32 @@ function openEditOrder(id){
   ge('f-oid').value=o.id;ge('f-odate').value=o.date;ge('f-otime').value=o.time;
   ge('f-oaddr').value=o.address;ge('f-ochild').value=o.childName;ge('f-oage').value=o.childAge;
   ge('f-owish').value=o.wishes;ge('f-onotes').value=o.notes;ge('f-opay').value=o.payment;
-  ge('f-opayout').value=(o.payout!=null?o.payout:'');ge('f-oscen').value=o.scenario;
-  ge('f-ostf').innerHTML=D.staff.map(s=>`<option value="${s.id}" ${s.id===o.staffId?'selected':''}>${s.role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
+  ge('f-odmpay').value=(o.dmPayout!=null?o.dmPayout:((o.payout!=null&&(o.dmId||o.staffId))?o.payout:''));
+  ge('f-osnpay').value=(o.snPayout!=null?o.snPayout:'');ge('f-oscen').value=o.scenario;
+  ge('f-odm').innerHTML=staffOpts('dm',o.dmId||o.staffId||'');ge('f-osn').innerHTML=staffOpts('sn',o.snId||'');
   cAllM();oMod('M-ord');
 }
 function saveOrder(){
   const id=eOid||uid();
-  const payoutRaw=ge('f-opayout').value;
-  const o={id,staffId:ge('f-ostf').value,date:ge('f-odate').value,time:ge('f-otime').value,
+  const dmp=ge('f-odmpay').value,snp=ge('f-osnpay').value;
+  const o={dmId:ge('f-odm').value||'',snId:ge('f-osn').value||'',
+    date:ge('f-odate').value,time:ge('f-otime').value,
     address:ge('f-oaddr').value.trim(),childName:ge('f-ochild').value.trim(),
     childAge:parseInt(ge('f-oage').value)||0,wishes:ge('f-owish').value.trim(),
     notes:ge('f-onotes').value.trim(),payment:parseInt(ge('f-opay').value)||0,
-    payout:payoutRaw===''?null:(parseInt(payoutRaw)||0),
-    scenario:ge('f-oscen').value.trim(),status:'upcoming'};
+    dmPayout:dmp===''?null:(parseInt(dmp)||0),snPayout:snp===''?null:(parseInt(snp)||0),
+    scenario:ge('f-oscen').value.trim()};
   if(!o.childName||!o.date||!o.address){toast('❗ Заполните обязательные поля');return}
-  D=load();const i=D.orders.findIndex(x=>x.id===id);
-  if(i>=0){o.status=D.orders[i].status;D.orders[i]=o}else D.orders.push(o);
+  if(!o.dmId&&!o.snId){toast('❗ Назначьте хотя бы одного исполнителя');return}
+  D=load();const ex=D.orders.find(x=>x.id===id);
+  o.status=ex?ex.status:'upcoming';
+  if(CLOUD){
+    o.updatedAt=new Date().toISOString(); if(!ex)o.createdAt=o.updatedAt;
+    cWriteOrder(id,o).then(()=>{cAllM();toast(eOid?'✓ Заказ обновлён':'✓ Заказ добавлен')}).catch(e=>toast('Ошибка: '+e.message));
+    return;
+  }
+  o.id=id;const i=D.orders.findIndex(x=>x.id===id);
+  if(i>=0)D.orders[i]=o;else D.orders.push(o);
   save();cAllM();toast(eOid?'✓ Заказ обновлён':'✓ Заказ добавлен');
   if(isAdmin())rAdmOrders();else rStfOrders();
 }
@@ -1019,12 +1107,17 @@ function saveStaff(){
   const pin=String(ge('f-spin').value).replace(/\D/g,'').slice(0,4);
   const perms={addOrders:ge('f-padd').checked,editOrders:ge('f-pedit').checked,
     viewAll:ge('f-pviewall').checked,manageStaff:ge('f-pstaff').checked,manageKnowledge:ge('f-pknow').checked};
-  const st={id,name:ge('f-sname').value.trim(),role:ge('f-srole').value,pin,perms};
+  const st={name:ge('f-sname').value.trim(),role:ge('f-srole').value,pin,perms};
   if(!st.name||pin.length!==4){toast('❗ Укажите имя и PIN (4 цифры)');return}
   D=load();
   if(D.staff.find(s=>s.pin===pin&&s.id!==id)){toast('❗ Этот PIN уже занят');return}
-  if(pin===D.adminPin){toast('❗ PIN занят администратором');return}
-  const i=D.staff.findIndex(x=>x.id===id);
+  if(pin===(D.adminPin||ADMIN_PIN)){toast('❗ PIN занят администратором');return}
+  if(CLOUD){
+    st.updatedAt=new Date().toISOString();
+    cWriteStaff(id,st).then(()=>{cAllM();toast(eSid?'✓ Сотрудник обновлён':'✓ Сотрудник добавлен')}).catch(e=>toast('Ошибка: '+e.message));
+    return;
+  }
+  st.id=id;const i=D.staff.findIndex(x=>x.id===id);
   if(i>=0)D.staff[i]=st;else D.staff.push(st);
   save();cAllM();toast(eSid?'✓ Сотрудник обновлён':'✓ Сотрудник добавлен');
   if(isAdmin()){rPayrollSummary();rStaffList('adm-staff')}else{rStaffList('sf-staff-list')}
@@ -1057,6 +1150,7 @@ function saveKnow(){
 function delConf(id){
   ge('conf-txt').textContent='Заказ будет удалён навсегда.';
   ge('conf-ok').onclick=()=>{
+    if(CLOUD){cDelOrder(id).then(()=>{cAllM();toast('Удалено')}).catch(e=>toast('Ошибка: '+e.message));return;}
     D=load();D.orders=D.orders.filter(o=>o.id!==id);save();cAllM();toast('Удалено');rAdmOrders();
   };
   cAllM();oMod('M-conf');
@@ -1106,7 +1200,10 @@ function mkSnow(){
 }
 
 // ── INIT ──
-document.addEventListener('DOMContentLoaded',()=>{D=load();mkSnow();showS('S-login')});
+document.addEventListener('DOMContentLoaded',()=>{
+  mkSnow();D=load();showS('S-login');
+  initCloud().then(()=>{ if(CLOUD)D=load(); });
+});
 </script>
 </body>
 </html>
