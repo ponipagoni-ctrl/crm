@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎅 Аниматор Про</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f4f5fa;--bg2:#ffffff;--card:#ffffff;--card2:#f4f5fa;
+  --red:#4f46e5;--red2:#4338ca;--blue:#0ea5e9;--gold:#d97706;
+  --green:#22c55e;--danger:#ef4444;--text:#1e2233;--text2:#7a8199;--border:#e6e8f0;--r:14px
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;
+  margin:0 auto;overflow-x:hidden}
+.hidden{display:none!important}
+.screen{min-height:100vh}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:none;border-radius:var(--r);cursor:pointer;font-size:15px;font-weight:600;
+  padding:12px 20px;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.96);opacity:.85}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+.btn-full{width:100%}
+.btn-sm{padding:8px 12px;font-size:13px}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--r);padding:16px;border:1px solid var(--border)}
+
+/* INPUTS */
+.inp{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;
+  color:var(--text);font-size:15px;padding:12px 14px;outline:none;transition:border-color .2s;
+  font-family:inherit}
+.inp:focus{border-color:var(--blue)}
+.inp::placeholder{color:var(--text2)}
+textarea.inp{min-height:80px;resize:vertical}
+select.inp{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238899cc'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.fg{margin-bottom:14px}
+.fl{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;
+  position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--border)}
+.hdr-title{font-size:18px;font-weight:700}
+.hdr-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* TABBAR */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+  background:var(--bg2);border-top:1px solid var(--border);display:flex;z-index:20;
+  padding-bottom:env(safe-area-inset-bottom,0)}
+.tbb{flex:1;background:none;border:none;color:var(--text2);cursor:pointer;
+  padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;transition:color .2s}
+.tbb.active{color:var(--red)}
+.tbb-icon{font-size:22px}
+
+/* CONTENT */
+.content{padding:16px 16px calc(70px + env(safe-area-inset-bottom,0))}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.3px}
+.b-dm{background:rgba(230,57,70,.2);color:var(--red)}
+.b-sn{background:rgba(76,201,240,.2);color:var(--blue)}
+.b-up{background:rgba(56,176,0,.2);color:#38b000}
+.b-dn{background:rgba(100,100,120,.2);color:var(--text2)}
+
+/* ORDER CARD */
+.oc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s,transform .1s}
+.oc:active{transform:scale(.98);border-color:var(--red)}
+.oc-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.oc-date{font-size:16px;font-weight:700}
+.oc-time{font-size:14px;color:var(--gold);margin-top:2px}
+.oc-child{font-size:15px;font-weight:600;margin-bottom:4px}
+.oc-addr{font-size:13px;color:var(--text2)}
+.oc-staff{font-size:12px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+
+/* LOGIN */
+#S-login{display:flex;flex-direction:column;align-items:center;padding:50px 24px 24px;
+  min-height:100vh;background:radial-gradient(ellipse at top,#eef2ff 0%,#f4f5fa 60%)}
+.l-logo{font-size:80px;margin-bottom:12px;filter:drop-shadow(0 0 30px rgba(79,70,229,.35))}
+.l-title{font-size:28px;font-weight:800;margin-bottom:4px}
+.l-sub{font-size:14px;color:var(--text2);margin-bottom:36px}
+.pin-row{display:flex;gap:16px;margin-bottom:24px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--text2);transition:all .15s}
+.pin-dot.on{background:var(--red);border-color:var(--red);transform:scale(1.1)}
+.pin-err{color:var(--danger);font-size:13px;min-height:18px;margin-bottom:14px;text-align:center}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:270px}
+.nb{aspect-ratio:1;border:none;border-radius:50%;background:var(--card);color:var(--text);
+  font-size:24px;font-weight:600;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;border:1.5px solid var(--border)}
+.nb:active{transform:scale(.9);background:var(--card2)}
+.nb.del{font-size:18px;color:var(--text2)}
+.nb.emp{background:transparent;border:none;cursor:default}
+
+/* AVATAR */
+.av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:22px;flex-shrink:0}
+.av-dm{background:rgba(230,57,70,.2)}
+.av-sn{background:rgba(76,201,240,.2)}
+
+/* STAFF CARD */
+.sc{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+.sc:active{border-color:var(--blue)}
+.sc-info{flex:1}
+.sc-name{font-size:16px;font-weight:700}
+.sc-role{font-size:13px;color:var(--text2);margin-top:2px}
+.sc-pin{font-size:12px;color:var(--text2);font-family:monospace;
+  background:var(--bg2);padding:3px 10px;border-radius:6px}
+
+/* KNOWLEDGE */
+.kc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden}
+.kc-hd{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.kc-title{font-size:15px;font-weight:600}
+.kc-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.kc-body{padding:0 16px 14px;font-size:14px;line-height:1.7;color:#3a3f52;white-space:pre-wrap;display:none}
+.kc-body.open{display:block}
+.kc-arr{font-size:18px;color:var(--text2);transition:transform .2s;margin-left:8px}
+.kc-arr.open{transform:rotate(180deg)}
+
+/* FAB */
+.fab{position:fixed;bottom:calc(70px + 16px + env(safe-area-inset-bottom,0));right:20px;
+  width:54px;height:54px;border-radius:50%;background:var(--red);border:none;color:#fff;
+  font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(79,70,229,.35);z-index:15;transition:transform .1s}
+.fab:active{transform:scale(.92)}
+
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;
+  display:flex;align-items:flex-end;justify-content:center}
+.msh{background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-width:430px;
+  max-height:92vh;overflow-y:auto;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0))}
+.msh:not([onclick]){pointer-events:auto}
+.mh{width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px}
+.mt{font-size:20px;font-weight:800;margin-bottom:16px}
+
+/* ORDER DETAIL */
+.dr{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.di{font-size:20px;width:28px;flex-shrink:0}
+.dl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;margin-bottom:3px}
+.dv{font-size:15px}
+
+/* SECTION TITLE */
+.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text2);margin:20px 0 10px}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--text2)}
+.empty-ico{font-size:48px;margin-bottom:12px}
+.empty-t{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text)}
+.empty-s{font-size:14px}
+
+/* SNOWFLAKES */
+.snowflakes{position:fixed;top:0;left:0;right:0;pointer-events:none;z-index:0;overflow:hidden;height:100%}
+@keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:.8}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}
+.sf{position:absolute;color:rgba(30,34,51,.07);animation:fall linear infinite;font-size:12px}
+
+/* WELCOME */
+.wc{background:linear-gradient(135deg,var(--red2),var(--red));border-radius:var(--r);
+  padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:14px}
+.wc.sn{background:linear-gradient(135deg,#1a6eaa,#4cc9f0)}
+.wc-emoji{font-size:52px}
+.wc-hello{font-size:13px;opacity:.85}
+.wc-name{font-size:22px;font-weight:800}
+.wc-role{font-size:13px;opacity:.85;margin-top:2px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px;text-align:center}
+.stat-n{font-size:30px;font-weight:800}
+.stat-l{font-size:11px;color:var(--text2);margin-top:4px}
+
+/* CHIPS */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:var(--card);
+  border:1.5px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip.on{background:var(--red);border-color:var(--red);color:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(78px + env(safe-area-inset-bottom,0));left:50%;
+  transform:translateX(-50%) translateY(20px);background:#181b2e;border:1px solid #181b2e;
+  color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;opacity:0;
+  transition:opacity .3s,transform .3s;z-index:300;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* LOGOUT */
+.lob{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:4px}
+
+/* 2-COL GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* PERMISSIONS */
+.perm-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.perm-row:last-child{border-bottom:none}
+.perm-cb{width:20px;height:20px;flex-shrink:0;accent-color:var(--red)}
+.perm-lb{font-size:14px;flex:1}
+.perm-sub{font-size:11px;color:var(--text2);margin-top:1px}
+
+/* EARNINGS */
+.sc-earn{font-size:12px;color:var(--gold);font-weight:700;margin-top:3px}
+.perm-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.pb{font-size:10px;background:var(--bg2);color:var(--blue);padding:2px 7px;border-radius:8px;font-weight:700}
+
+/* CALENDAR */
+.cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-title{font-size:16px;font-weight:800}
+.cal-nav{background:var(--card);border:1.5px solid var(--border);border-radius:10px;width:36px;height:36px;
+  color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-nav:active{transform:scale(.92)}
+.cal-wd{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:6px}
+.cal-wd div{text-align:center;font-size:11px;color:var(--text2);font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:16px}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:10px;background:var(--card);border:1.5px solid var(--border);font-size:13px;
+  cursor:pointer;gap:2px;transition:border-color .15s}
+.cal-day.empty{background:transparent;border-color:transparent;cursor:default}
+.cal-day.today{border-color:var(--gold);color:var(--gold);font-weight:800}
+.cal-day.has{border-color:var(--red)}
+.cal-day.sel{background:var(--red);border-color:var(--red);color:#fff}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:var(--red)}
+.cal-day.sel .cal-dot{background:#fff}
+
+/* CRM theme polish */
+.card,.oc,.sc,.stat,.kc{box-shadow:0 1px 3px rgba(30,34,51,.08),0 4px 16px rgba(30,34,51,.06)}
+.hdr{box-shadow:0 1px 0 var(--border)}
+@media(max-width:380px){.nb{font-size:20px}}
+</style>
+</head>
+<body>
+
+<!-- ═══════ ЭКРАН ВХОДА ═══════ -->
+<div id="S-login" class="screen">
+  <div class="snowflakes" id="snowflakes"></div>
+  <div class="l-logo">🎅</div>
+  <div class="l-title">Аниматор Про</div>
+  <div class="l-sub">Введите PIN-код</div>
+  <div class="pin-row">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-err" id="pin-err"></div>
+  <div class="numpad">
+    <button class="nb" onclick="np(1)">1</button>
+    <button class="nb" onclick="np(2)">2</button>
+    <button class="nb" onclick="np(3)">3</button>
+    <button class="nb" onclick="np(4)">4</button>
+    <button class="nb" onclick="np(5)">5</button>
+    <button class="nb" onclick="np(6)">6</button>
+    <button class="nb" onclick="np(7)">7</button>
+    <button class="nb" onclick="np(8)">8</button>
+    <button class="nb" onclick="np(9)">9</button>
+    <button class="nb emp"></button>
+    <button class="nb" onclick="np(0)">0</button>
+    <button class="nb del" onclick="nd()">⌫</button>
+  </div>
+</div>
+
+<!-- ═══════ ЭКРАН АДМИНИСТРАТОРА ═══════ -->
+<div id="S-admin" class="screen hidden">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">👑 Управление</div>
+      <div class="hdr-sub" id="adm-date"></div>
+    </div>
+    <button class="lob" onclick="logout()">🚪</button>
+  </div>
+  <div class="content">
+    <div id="at-orders">
+      <div class="chips" id="adm-chips"></div>
+      <div id="adm-orders"></div>
+      <button class="fab" onclick="openAddOrder()">+</button>
+    </div>
+    <div id="at-staff" class="hidden">
+      <div id="adm-payroll"></div>
+      <div id="adm-staff"></div>
+      <button class="fab" onclick="openAddStaff()">+</button>
+    </div>
+    <div id="at-know" class="hidden">
+      <div id="adm-know"></div>
+      <button class="fab" onclick="openAddKnow()">+</button>
+    </div>
+    <div id="at-cal" class="hidden">
+      <div id="adm-cal"></div>
+      <div id="adm-cal-day"></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <button class="tbb active" id="abt-orders" onclick="aTab('orders')">
+      <span class="tbb-icon">📋</span>Заказы
+    </button>
+    <button class="tbb" id="abt-cal" onclick="aTab('cal')">
+      <span class="tbb-icon">🗓</span>Календарь
+    </button>
+    <button class="tbb" id="abt-staff" onclick="aTab('staff')">
+      <span class="tbb-icon">👥</span>Сотрудники
+    </button>
+    <button class="tbb" id="abt-know" onclick="aTab('know')">
+      <span class="tbb-icon">📚</span>База знаний
+    </button>
+  </div>
+</div>
+
+<!-- ═══════ ЭКРАН СОТРУДНИКА ═══════ -->
+<div id="S-staff" class="screen hidden">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title" id="sf-name"></div>
+      <div class="hdr-sub" id="sf-date"></div>
+    </div>
+    <button class="lob" onclick="logout()">🚪</button>
+  </div>
+  <div class="content">
+    <div id="st-orders">
+      <div class="wc" id="sf-wcard">
+        <div class="wc-emoji" id="sf-emoji">🎅</div>
+        <div>
+          <div class="wc-hello">Добро пожаловать,</div>
+          <div class="wc-name" id="sf-wname"></div>
+          <div class="wc-role" id="sf-wrole"></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-n" id="sf-sup">0</div><div class="stat-l">Предстоит</div></div>
+        <div class="stat"><div class="stat-n" id="sf-sdn">0</div><div class="stat-l">Выполнено</div></div>
+      </div>
+      <div class="st" id="sf-orders-title">Мои заказы</div>
+      <div class="chips hidden" id="sf-chips"></div>
+      <div id="sf-orders"></div>
+      <button class="fab hidden" id="sf-fab-order" onclick="openAddOrder()">+</button>
+    </div>
+    <div id="st-staff" class="hidden">
+      <div id="sf-staff-list"></div>
+      <button class="fab" onclick="openAddStaff()">+</button>
+    </div>
+    <div id="st-know" class="hidden">
+      <div id="sf-know"></div>
+      <button class="fab hidden" id="sf-fab-know" onclick="openAddKnow()">+</button>
+    </div>
+  </div>
+  <div class="tabbar" id="sf-tabbar"></div>
+</div>
+
+<!-- ═══════ МОДАЛКИ ═══════ -->
+<div id="MOV" class="mov hidden" onclick="cModal(event)">
+
+  <!-- Детали заказа -->
+  <div id="M-det" class="msh hidden" onclick="event.stopPropagation()">
+    <div class="mh"></div>
+    <div id="det-body"></div>
+  </div>
+
+  <!-- Форма заказа -->
+  <div id="M-ord" class="msh hidden" onclick="event.stopPropagation()">
+    <div class="mh"></div>
+    <div class="mt" id="ord-mtitle">Новый заказ</div>
+    <input type="hidden" id="f-oid">
+    <div class="fg"><label class="fl">Сотрудник</label>
+      <select class="inp" id="f-ostf"></select></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">Дата</label><input class="inp" type="date" id="f-odate"></div>
+      <div class="fg"><label class="fl">Время</label><input class="inp" type="time" id="f-otime"></div>
+    </div>
+    <div class="fg"><label class="fl">Адрес</label>
+      <input class="inp" type="text" id="f-oaddr" placeholder="ул. Ленина, 15, кв. 8"></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">Имя ребёнка</label>
+        <input class="inp" type="text" id="f-ochild" placeholder="Максим"></div>
+      <div class="fg"><label class="fl">Возраст</label>
+        <input class="inp" type="number" id="f-oage" placeholder="5" min="1" max="16"></div>
+    </div>
+    <div class="fg"><label class="fl">Желание</label>
+      <input class="inp" type="text" id="f-owish" placeholder="Машинку на пульте управления"></div>
+    <div class="fg"><label class="fl">Особенности / важно знать</label>
+      <textarea class="inp" id="f-onotes" placeholder="Боится громких звуков..."></textarea></div>
+    <div class="g2">
+      <div class="fg"><label class="fl">Сумма заказа (₽)</label>
+        <input class="inp" type="number" id="f-opay" placeholder="3000"></div>
+      <div class="fg"><label class="fl">К выплате сотруднику (₽)</label>
+        <input class="inp" type="number" id="f-opayout" placeholder="600"></div>
+    </div>
+    <div class="fg"><label class="fl">Сценарий / доп. инструкция</label>
+      <textarea class="inp" id="f-oscen" placeholder="Особые пожелания или сценарий..."></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="cAllM()">Отмена</button>
+      <button class="btn btn-red" style="flex:2" onclick="saveOrder()">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- Форма сотрудника -->
+  <div id="M-stf" class="msh hidden" onclick="event.stopPropagation()">
+    <div class="mh"></div>
+    <div class="mt" id="stf-mtitle">Новый сотрудник</div>
+    <input type="hidden" id="f-sid">
+    <div id="stf-earn" class="stats hidden">
+      <div class="stat"><div class="stat-n" id="stf-earn-cnt">0</div><div class="stat-l">Заказов</div></div>
+      <div class="stat"><div class="stat-n" id="stf-earn-sum" style="font-size:20px">0 ₽</div><div class="stat-l">Заработано</div></div>
+    </div>
+    <div class="fg"><label class="fl">Имя</label>
+      <input class="inp" type="text" id="f-sname" placeholder="Иван"></div>
+    <div class="fg"><label class="fl">Роль</label>
+      <select class="inp" id="f-srole">
+        <option value="dm">🎅 Дед Мороз</option>
+        <option value="sn">❄️ Снегурочка</option>
+      </select></div>
+    <div class="fg"><label class="fl">PIN-код (4 цифры)</label>
+      <input class="inp" type="tel" id="f-spin" placeholder="1234" maxlength="4" inputmode="numeric"></div>
+    <div class="fg">
+      <label class="fl">Права доступа</label>
+      <div class="card" style="padding:4px 14px">
+        <label class="perm-row"><input type="checkbox" class="perm-cb" id="f-padd">
+          <div><div class="perm-lb">Добавлять заказы</div><div class="perm-sub">Создавать новые события</div></div></label>
+        <label class="perm-row"><input type="checkbox" class="perm-cb" id="f-pedit">
+          <div><div class="perm-lb">Редактировать заказы</div><div class="perm-sub">Менять и удалять любые заказы</div></div></label>
+        <label class="perm-row"><input type="checkbox" class="perm-cb" id="f-pviewall">
+          <div><div class="perm-lb">Видеть все заказы</div><div class="perm-sub">Не только свои</div></div></label>
+        <label class="perm-row"><input type="checkbox" class="perm-cb" id="f-pstaff">
+          <div><div class="perm-lb">Управлять сотрудниками</div><div class="perm-sub">Добавлять, редактировать, выдавать права</div></div></label>
+        <label class="perm-row"><input type="checkbox" class="perm-cb" id="f-pknow">
+          <div><div class="perm-lb">Редактировать базу знаний</div><div class="perm-sub">Добавлять и менять статьи</div></div></label>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="cAllM()">Отмена</button>
+      <button class="btn btn-red" style="flex:2" onclick="saveStaff()">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- Форма базы знаний -->
+  <div id="M-knw" class="msh hidden" onclick="event.stopPropagation()">
+    <div class="mh"></div>
+    <div class="mt" id="knw-mtitle">Новая статья</div>
+    <input type="hidden" id="f-kid">
+    <div class="fg"><label class="fl">Заголовок</label>
+      <input class="inp" type="text" id="f-ktitle" placeholder="Стандартный сценарий выезда"></div>
+    <div class="fg"><label class="fl">Категория</label>
+      <input class="inp" type="text" id="f-kcat" placeholder="Сценарии / Советы / Игры"></div>
+    <div class="fg"><label class="fl">Для кого</label>
+      <select class="inp" id="f-krole">
+        <option value="all">Для всех</option>
+        <option value="dm">Только Дед Мороз</option>
+        <option value="sn">Только Снегурочка</option>
+      </select></div>
+    <div class="fg"><label class="fl">Текст статьи</label>
+      <textarea class="inp" id="f-kcont" placeholder="Содержимое..." style="min-height:150px"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="cAllM()">Отмена</button>
+      <button class="btn btn-red" style="flex:2" onclick="saveKnow()">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- Подтверждение удаления -->
+  <div id="M-conf" class="msh hidden" onclick="event.stopPropagation()">
+    <div class="mh"></div>
+    <div class="mt">Удалить?</div>
+    <p style="color:var(--text2);margin-bottom:20px" id="conf-txt"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="cAllM()">Отмена</button>
+      <button class="btn btn-red" style="flex:2" id="conf-ok">Удалить</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast-el"></div>
+
+<script>
+const KEY='animator_pro_v1';
+let D=null,CU=null,aFilter='all',pinBuf='',eOid=null,eSid=null,eKid=null;
+
+const MG=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const WD=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function fmtD(s){const d=new Date(s+'T00:00:00');return d.getDate()+' '+MG[d.getMonth()]}
+function fmtDF(d){return WD[d.getDay()]+', '+d.getDate()+' '+MG[d.getMonth()]}
+function ge(id){return document.getElementById(id)}
+function isAdmin(){return !!(CU&&CU.type==='admin')}
+function can(perm){return isAdmin()||!!(CU&&CU.type==='staff'&&CU.perms&&CU.perms[perm])}
+function staffEarnings(staffId){
+  D=load();
+  const mine=D.orders.filter(o=>o.staffId===staffId);
+  const payoutOf=o=>(o.payout!=null&&o.payout!=='')?Number(o.payout):Math.round((o.payment||0)*0.2);
+  const done=mine.filter(o=>o.status==='done'),up=mine.filter(o=>o.status==='upcoming');
+  const doneSum=done.reduce((a,o)=>a+payoutOf(o),0),upSum=up.reduce((a,o)=>a+payoutOf(o),0);
+  return{count:mine.length,doneCount:done.length,doneSum,upSum,total:doneSum+upSum};
+}
+
+// ── DATA ──
+function load(){
+  const r=localStorage.getItem(KEY);
+  if(!r){D=seed();return D}
+  let d;
+  try{d=JSON.parse(r)}catch(e){D=seed();return D}
+  return mergeKnowledge(d);
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(D))}
+// Подтягивает новые статьи базы знаний из seedData() в уже существующие данные
+// пользователя (по id), не трогая то, что он сам изменил или удалил в других разделах.
+function mergeKnowledge(d){
+  const sd=seedData();
+  d.knowledge=d.knowledge||[];
+  d.deletedKnowledge=d.deletedKnowledge||[];
+  const have=new Set(d.knowledge.map(k=>k.id));
+  const del=new Set(d.deletedKnowledge);
+  let changed=false;
+  sd.knowledge.forEach(k=>{if(!have.has(k.id)&&!del.has(k.id)){d.knowledge.push(k);changed=true}});
+  D=d;
+  if(changed)save();
+  return d;
+}
+function seed(){D=seedData();save();return D}
+function seedData(){
+  return {
+    adminPin:'2727',
+    staff:[
+      {id:'s1',name:'Иван',role:'dm',pin:'1111',perms:{addOrders:false,editOrders:false,viewAll:false,manageStaff:false,manageKnowledge:false}},
+      {id:'s2',name:'Света',role:'sn',pin:'2222',perms:{addOrders:false,editOrders:false,viewAll:false,manageStaff:false,manageKnowledge:false}},
+      {id:'s3',name:'Артём',role:'dm',pin:'3333',perms:{addOrders:true,editOrders:true,viewAll:true,manageStaff:false,manageKnowledge:false}},
+      {id:'s4',name:'Маша',role:'sn',pin:'4444',perms:{addOrders:false,editOrders:false,viewAll:false,manageStaff:false,manageKnowledge:false}},
+      {id:'s5',name:'Дима',role:'dm',pin:'5555',perms:{addOrders:false,editOrders:false,viewAll:false,manageStaff:false,manageKnowledge:false}},
+      {id:'s6',name:'Катя',role:'sn',pin:'6666',perms:{addOrders:false,editOrders:false,viewAll:false,manageStaff:false,manageKnowledge:false}},
+    ],
+    orders:[
+      {id:'o1',staffId:'s1',date:'2026-12-20',time:'14:00',
+       address:'ул. Ленина, 15, кв. 8',childName:'Максим',childAge:5,
+       wishes:'Машинку на пульте управления',
+       notes:'Боится громких звуков — говорить спокойно. Любит динозавров.',
+       payment:3000,payout:600,status:'upcoming',scenario:''},
+      {id:'o2',staffId:'s2',date:'2026-12-20',time:'16:30',
+       address:'ул. Мира, 30, кв. 12',childName:'Настя',childAge:4,
+       wishes:'Куклу в розовом платье',
+       notes:'Очень робкая. Говорить тихо и ласково. Не подходить первой.',
+       payment:3000,payout:600,status:'upcoming',scenario:''},
+      {id:'o3',staffId:'s1',date:'2026-12-22',time:'11:00',
+       address:'ул. Гагарина, 8, кв. 45',childName:'Егор',childAge:6,
+       wishes:'Конструктор Lego City',
+       notes:'',payment:3500,payout:700,status:'upcoming',scenario:''},
+      {id:'o4',staffId:'s3',date:'2026-12-23',time:'15:00',
+       address:'пр. Победы, 44, кв. 3',childName:'Вика и Серёжа',childAge:7,
+       wishes:'Планшет и велосипед',
+       notes:'Двое детей — 7 и 5 лет. Старший знает что ДМ актёр, младший нет. Держать образ строго.',
+       payment:5000,payout:1000,status:'upcoming',scenario:''},
+      {id:'o5',staffId:'s1',date:'2026-12-10',time:'13:00',
+       address:'ул. Кирова, 22, кв. 18',childName:'Алёша',childAge:5,
+       wishes:'Робот-трансформер',notes:'',payment:3000,payout:600,status:'done',scenario:''},
+    ],
+    knowledge:[
+      {id:'k1',role:'all',category:'Философия образа',
+       title:'Главное правило — вы настоящие',
+       content:'Дед Мороз и Снегурочка — не артисты в костюмах. Вы настоящие.\n\nЭто не про обман. Это про магию. Дети верят в то, во что верите вы сами. Если вы сомневаетесь — они чувствуют.\n\nКак держать образ:\n— Никогда не выходить из роли в присутствии детей\n— Не снимать элементы костюма при детях\n— Говорить о Северном полюсе, лошадях, Снегурочке как о части своей жизни\n— Если ребёнок спросит «ты настоящий?»: «А как ты думаешь? Разве мог бы ненастоящий знать твоё имя?»\n\nВажно: взрослые тоже хотят верить. Дайте им эту возможность.'},
+
+      {id:'k2',role:'all',category:'Философия образа',
+       title:'Подготовка — что узнать заранее',
+       content:'До выезда обязательно узнай у заказчика:\n\n👶 ИМЯ ребёнка (и как ласково называют дома)\n🎂 ВОЗРАСТ\n🎮 УВЛЕЧЕНИЯ — что любит, чем занимается\n🎁 ЖЕЛАНИЕ — что хочет получить в подарок\n📝 НАПИСАЛ ЛИ ПИСЬМО Деду Морозу\n🏠 ЧТО ОСОБЕННОГО — боится громких звуков? стеснительный? активный?\n\nЭти данные — твоё волшебство. «Я знаю, что ты любишь динозавров!» — и ребёнок уже в шоке.\n\nЧем больше знаешь — тем сильнее эффект.'},
+
+      {id:'k3',role:'all',category:'Философия образа',
+       title:'Вход в дом — как это работает',
+       content:'ПЕРВОЙ входит Снегурочка.\n\nЭто не случайно. Снегурочка — мягкий образ, она готовит детей, создаёт предвкушение. Дед Мороз — кульминация.\n\nСценарий входа:\n1. Снегурочка заходит, здоровается: «Дедушка уже совсем рядом!»\n2. Дети зовут хором: «Дед Мороз! Дед Мороз!»\n3. ДМ входит торжественно, останавливается на пороге\n4. Оглядывает комнату — медленно, с улыбкой\n5. «Здравствуйте, мои дорогие! Вот и добрался я до вас!»\n\nНе торопись. Пауза при входе — это магия.'},
+
+      {id:'k4',role:'dm',category:'Внешний вид',
+       title:'Образ Деда Мороза — что важно',
+       content:'Дед Мороз — величественный, добрый, мудрый старец с Севера.\n\nКОСТЮМ:\n— Шуба (длинная, до пола) — красная или синяя\n— Шапка с меховой опушкой\n— Варежки белые\n— Пояс с узором\n— Валенки или сапоги\n\nВ ОБРАЗЕ:\n— Борода всегда на месте (не трогать при детях!)\n— Посох — опора, не игрушка. Держать уверенно\n— Мешок — всегда при себе на входе\n\nЧЕГО НЕТ у Деда Мороза (в отличие от Санты):\n— «ХО-ХО-ХО» — это Санта-Клаус, не ДМ\n— Оленей — у ДМ тройка ЛОШАДЕЙ (Буян, Метелица, Вьюга)\n\nДМ говорит: «Мои лошадушки привезли», «На тройке летел».'},
+
+      {id:'k5',role:'sn',category:'Внешний вид',
+       title:'Образ Снегурочки — что важно',
+       content:'Снегурочка — нежная, лучистая, весёлая. Внучка Деда Мороза.\n\nКОСТЮМ:\n— Голубое или белое платье с серебристым узором\n— Кокошник с украшением\n— Шубка или накидка\n— Рукавички\n\nЗадачи Снегурочки:\n— Вести игры и вовлекать стеснительных детей\n— Поддерживать ДМ: «Правда, ребята? Давайте попросим Дедушку!»\n— Следить за временем (программа ~40-45 мин)\n— Раздавать подарки каждому по имени с добрым словом\n— Первой входить в дом и «готовить» детей\n\nЭнергия Снегурочки — тёплая, мягкая, весёлая.'},
+
+      {id:'k6',role:'all',category:'Голос и речь',
+       title:'Как говорить в образе',
+       content:'ДЕЛАЙ:\n— Медленнее обычного\n— Ниже привычного (особенно ДМ)\n— Паузы между фразами — это сила, не слабость\n— Дети слушают голос, не слова\n\nНЕ ДЕЛАЙ:\n— Сюсюкать\n— Говорить быстро\n— Переходить на обычную речь\n— Кричать — усиление идёт интонацией, не громкостью\n\nДЕД МОРОЗ: «Здравствуйте, мои дорогие», «Слышал я о тебе», «Знаю-знаю», «Ай молодец!»\n\nСНЕГУРОЧКА: «Ребята, давайте все вместе!», «Дедушка будет рад!», «Какие же вы молодцы!»\n\n💡 Запиши себя на диктофон перед выездом и послушай — сразу услышишь где ускоряешься.'},
+
+      {id:'k7',role:'all',category:'Работа с детьми',
+       title:'Дети 3–5 лет — малыши',
+       content:'ОСОБЕННОСТИ:\n— Могут испугаться — это НОРМАЛЬНО\n— Короткое внимание: программа не дольше 25–30 минут\n— Любят повторяющиеся игры и движения\n— Им важен телесный контакт (обнять, дать руку)\n\nЧТО РАБОТАЕТ:\n— Простые игры с движением\n— «Заморожу!» — проверено поколениями\n— Снежки (бумажные шарики)\n— Медленный торжественный выход подарка из мешка\n\nЕСЛИ ПЛАЧЕТ:\n→ Не торопи и не говори «не бойся»\n→ Опустись на колено — будь на уровне глаз\n→ Говори тихо и медленно\n→ Дай потрогать варежку или посох\n→ Передай конфетку через маму\n→ Дай 1–2 минуты — почти всегда отпускает'},
+
+      {id:'k8',role:'all',category:'Работа с детьми',
+       title:'Дети 6–9 лет — постарше',
+       content:'ОСОБЕННОСТИ:\n— Могут сомневаться в «настоящести» ДМ\n— Задают каверзные вопросы\n— Любят чувствовать себя умными\n— Активные, хотят участвовать, а не наблюдать\n\nЧТО РАБОТАЕТ:\n— Конкурсы и соревнования\n— «Испытания» перед получением подарка\n— Вовлечение в роль помощников ДМ\n— Загадки, «горячо-холодно», танцевальные движения\n\nЕСЛИ СОМНЕВАЕТСЯ:\n→ Не спорь — это проигрыш\n→ «А разве мог бы НЕнастоящий знать, что ты любишь [увлечение]?»\n→ Переключи на действие — некогда думать о сомнениях\n\nВажно: если есть и малыши, и постарше — держи образ строго для всех.'},
+
+      {id:'k9',role:'all',category:'Каверзные вопросы',
+       title:'Ответы на сложные вопросы детей',
+       content:'«Ты настоящий Дед Мороз?»\n→ «А как ты думаешь? Разве мог бы ненастоящий знать твоё имя и твои желания?»\n\n«Почему голос не такой как в мультике?»\n→ «Долго летел на морозе — немного охрип. Зато подарки привёз!»\n\n«У тебя же олени!»\n→ «Это у Санта-Клауса олени. А я — Дед Мороз! У меня тройка лошадей — Буян, Метелица и Вьюга. Они у подъезда ждут!»\n\n«Борода ненастоящая?» (тянет)\n→ Смеётся: «Ой-ой, щекотно! Настоящая, только не тяни так больно!» (уверенно, без паники)\n\n«Где ты живёшь?»\n→ «На Великом Устюге, в волшебном тереме! Там снег круглый год!»\n\n«Ты в магазине продаёшься?»\n→ «Я живой, я не продаюсь! В магазинах мои помощники стоят, чтобы дети не скучали по мне!»'},
+
+      {id:'k10',role:'all',category:'Чек-лист',
+       title:'Чек-лист перед выездом',
+       content:'КОСТЮМ И РЕКВИЗИТ:\n☐ Шуба / платье (чистые, без пятен)\n☐ Шапка / кокошник\n☐ Варежки\n☐ Пояс / накидка\n☐ Обувь (валенки / сапоги)\n☐ Борода (ДМ)\n☐ Посох (ДМ)\n☐ Мешок с подарками\n\nПОДАРКИ:\n☐ Подарки в мешке (проверить по именам)\n☐ Конфеты / угощение\n\nИНФОРМАЦИЯ:\n☐ Имя ребёнка и как называют дома\n☐ Возраст и увлечения\n☐ Особенности (боится, стеснительный)\n☐ Адрес и код домофона\n\nТЕХНИКА:\n☐ Телефон заряжен\n☐ Музыка скачана (не только стримить!)\n☐ Bluetooth-колонка\n\nДЛЯ СЕБЯ:\n☐ Вода / перекус (если несколько выездов)\n☐ Влажные салфетки\n\nСЦЕНАРИЙ:\n☐ Повторил сценарий\n☐ Помнишь имя и детали ребёнка\n☐ Знаешь порядок игр\n\nДЕНЬГИ:\n☐ Сдача есть (если клиент платит наличными)'},
+
+      {id:'k11',role:'all',category:'Условия работы',
+       title:'Ставки и расчёт оплаты',
+       content:'СТАВКИ СОТРУДНИКОВ:\n— Дед Мороз: 20% от стоимости заказа\n— Снегурочка: 20% от стоимости заказа\n— Бонус +5% если едешь на своей машине\n\nПРИМЕРЫ:\n• Заказ 3 000 ₽ → ДМ получает 600 ₽\n• Заказ 3 000 ₽ + своя машина → 750 ₽\n• Заказ 5 000 ₽ → 1 000 ₽\n• Заказ 5 000 ₽ + машина → 1 250 ₽\n\nОплата за смену — после всех выездов.\n\nЕсли клиент платит при вас → принять деньги, отдать руководителю в конце смены.'},
+
+      {id:'k12',role:'all',category:'Условия работы',
+       title:'Правила — обязательно прочитать',
+       content:'🚫 ЗАПРЕЩЕНО СТРОГО:\n— Алкоголь в день выезда (даже после последнего заказа)\n— Опаздывать — недопустимо\n— Снимать элементы костюма при детях\n— Выходить из образа при детях\n— Обсуждать деньги при детях и клиентах\n\n⚠️ ВАЖНО:\n— Репетиции в октябре-ноябре — ОБЯЗАТЕЛЬНЫ\n— О любой проблеме (болезнь, форс-мажор) — сообщать руководителю НЕМЕДЛЕННО\n— Телефон доступен весь день выездов\n\n✅ ЕСЛИ ЧТО-ТО ПОШЛО НЕ ТАК:\nСразу звони руководителю. Не пытайся решить самостоятельно то, что выше твоих полномочий.'},
+
+      {id:'k13',role:'all',category:'Сложные ситуации',
+       title:'Что делать если ребёнок плачет',
+       content:'Это случается. Не паникуй — паника заразна.\n\nАЛГОРИТМ:\n1. Опустись на колено — будь на уровне глаз\n2. Говори тихо и медленно\n3. «Ну что ты, я же добрый. Вот моя варежка — потрогай, мягкая»\n4. Дай 1–2 минуты — почти всегда отпускает\n5. Если не идёт — конфетку через маму, переключи внимание\n6. Снегурочка в это время вовлекает других детей\n\nЧЕГО НЕ ДЕЛАТЬ:\n✗ «Не бойся» (усиливает страх)\n✗ Торопить\n✗ Смеяться над реакцией\n✗ Резко двигаться\n✗ Настаивать на объятиях\n\nЕсли совсем не помогает — подарок передаётся через маму. Это тоже нормально.'},
+
+      {id:'k14',role:'all',category:'Сложные ситуации',
+       title:'Алкоголь на мероприятии',
+       content:'КОРПОРАТИВЫ И ВЗРОСЛЫЕ ПРАЗДНИКИ:\nНа столе может быть алкоголь — это нормально. Ты не пьёшь.\n\nЕСЛИ ПРЕДЛАГАЮТ:\n→ «Я за рулём» / «Не пью на работе» / «Мне нельзя — волшебство пропадёт!»\n→ Вежливо но твёрдо отказать\n\nЕСЛИ ГОСТИ СИЛЬНО ВЫПИЛИ:\n→ Программу ускорить\n→ Концентрироваться на детях\n→ Если некомфортно — сигнал руководителю\n\nЕСЛИ ВЗРОСЛЫЕ ПЫТАЮТСЯ РАСКРЫТЬ ОБРАЗ ПРИ ДЕТЯХ:\n→ Мягко перевести: «Ребята, может Настеньке стих расскажем?»\n→ Держать образ несмотря ни на что'},
+
+      {id:'k15',role:'all',category:'Игры',
+       title:'Игры для детей 3–5 лет',
+       content:'ЗАМОРОЖУ 🧊\nДМ дует холодом — дети замирают. Снегурочка «размораживает» прикосновением. Повторять 3–4 раза, ускоряясь. Работает всегда.\n\nСНЕЖКИ ❄️\nБумажные шарики. Дети против ДМ. ДМ «проигрывает» — дети в восторге. Дать детям победить!\n\nПОВТОРИ ДВИЖЕНИЕ 🙌\nДМ показывает простые движения — дети повторяют. Начинается просто (хлопок, топ), усложняется.\n\nГДЕ ПОДАРОК? 🎁\nМешок с подарком — дети ищут по «холодно / горячо!»\n\nЖИВАЯ ЁЛОЧКА 🎄\nДети встают в круг, ДМ «наряжает» — каждому даёт роль игрушки. Называет по имени.'},
+
+      {id:'k16',role:'all',category:'Игры',
+       title:'Игры для детей 6–9 лет и корпоративов',
+       content:'РАССЫПУХА-СОБИРУХА 🎵\nПод музыку все танцуют. СН: «Рассыпуха!» — разбегаются. «Собируха!» — выполняют задание (обнять, встать в пары). Для корпоративов — топ.\n\nТАНЕЦ ПО ПАРАМ\n«Возьмитесь под ручку, скачите как Бобик с Жучкой!»\n«Руки на плечи — пляшите!»\n«Локоть за локоток — кружитесь!»\n\nТАНЦЕВАЛЬНЫЕ ДВИЖЕНИЯ\nДМ показывает движения — все повторяют. Усложнять постепенно.\n\nУЛИТКА\nХоровод закручивается в улитку и раскручивается. Между витками задания: «обнять соседа», «поздравить», «пожать руки».\n\nДОБРЫЕ ДЕЛА\nДМ спрашивает кто сделал доброе дело — за каждый ответ «находит» огонёк в комнате.'},
+
+      {id:'k17',role:'all',category:'Сценарии',
+       title:'Структура стандартного выезда (квартирник)',
+       content:'ХРОНОМЕТРАЖ: ~40–45 минут\n\n[0–3 мин] ВХОД\nСНЕГУРОЧКА заходит первой. «Ребята, дедушка уже совсем рядом! Давайте позовём громко!»\nДети зовут → ДМ входит торжественно, пауза, оглядывает комнату.\n\n[3–8 мин] ПРИВЕТСТВИЕ\nДМ называет ребёнка по имени. Удивляет знанием деталей.\n«Я знаю ты любишь [увлечение] — это мне Снегурочка рассказала!»\n\n[8–15 мин] РАЗГОВОР\n«Как ты жил весь год? Помогал маме? Учился?»\nПопросить рассказать стих или спеть.\n\n[15–30 мин] ИГРЫ\n2–3 игры в зависимости от возраста (см. статьи про игры)\n\n[30–38 мин] ПОДАРОК\nДостать из мешка медленно и торжественно.\n«Нашёл у самого Северного полюса — там твоё имя написано было!»\n\n[38–45 мин] ПРОЩАНИЕ\nОбнимашки, совместное фото. «До следующего года! Веди себя хорошо — я буду знать!»'},
+
+      {id:'k18',role:'all',category:'Сценарии',
+       title:'Сценарий «Зимний 2026» (с Бабой-Ягой)',
+       content:'РЕКВИЗИТ: Фокусы, пакет с огнями, верёвка, портрет ёлочки, сачок\n\nСЦЕНАРИЙ:\n1. СН входит: «Пока летела, встретила Бабу-Ягу — она поймала Деда Мороза!»\n2. Баба-Яга на экране: 3 задания чтобы освободить ДМ\n   — Найти в доме 3 предмета (круглое/блестящее, мягкое/пушистое, высокое/зелёное)\n   — Волшебный танец (топаем как ДМ, крутимся как снежинки, прыгаем как зайки)\n   — 3 превращения (снежинка → снеговик → салют)\n3. «Сосулька тает» → ДМ освобождён, торжественный выход\n4. ДМ: рисуют ёлочку вместе (портрет-раскраска)\n5. Ёлочке нужны огоньки → дети рассказывают добрые дела → ДМ «находит» огоньки в комнате (пакет светится)\n6. Финал, подарки'},
+
+      {id:'k19',role:'all',category:'Сценарии',
+       title:'Сценарий «Зимние причуды» (хоровод)',
+       content:'ФОРМАТ: Корпоратив или большой праздник\n\n1. ВХОД С ХОРОВОДОМ\nВсе берутся за руки, ДМ поёт и ведёт:\n«Ой, ниточка тоненькая, Озорная да весёленькая...»\n→ Заводит «Улитку» (хоровод закручивается/раскручивается)\n→ Задания: пожать руки, обнять, поздравить\n\n2. ТАНЕЦ «БЕЛЕНЬКИЙ СНЕЖОК»\nВсе повторяют движения за ДМ:\n«Выпал беленький снежок, соберёмся мы в кружок...»\nТопаем → украшаем ёлку (руки вверх) → хлопаем → прыгаем как зайки → приседаем.\n\n3. РАССЫПУХА-СОБИРУХА\nПо парам: «рассыпались» → по команде «собрались», выполняют задания вместе.\nЗадания: локоть за локоток / плечо к плечу / кренделёк — кружиться.\n\n4. ФИНАЛ\n«Побольше улыбок! Оставайтесь добрыми и радостными!»'},
+
+      {id:'k20',role:'all',category:'Сценарии',
+       title:'Сценарий «За ёлку, ДА!» (молодёжный корпоратив)',
+       content:'ФОРМАТ: Корпоратив, взрослая аудитория 18–35 лет\nСТИЛЬ: Современный, с юмором, молодёжный язык\n\n1. «АУФ»-ПРИВЕТСТВИЕ\nДМ учит сленг: «Когда кайф — говорят Ауф!»\nВсе «волки» говорят Ауф — кто громче.\n\n2. ВИЗУАЛИЗАЦИЯ\n«Берём соседа за руку... настраиваемся на волну!»\n(ДМ шутит про обещания → Снегурочка перебивает)\n\n3. ПЕСНИ НА СТАРОСЛАВЯНСКОМ\nПроверка «алкогольного понимания» — слушают, угадывают.\n\n4. ФЛЕКСИМ — ТАНЦЕВАЛЬНЫЕ ДВИЖЕНИЯ\nДМ показывает движения, все повторяют под фон.\n\n5. ИДЁМ ЗА ПОЛОВИНКОЙ\nТанцы по парам — 2-3 раунда.\n\n6. ФИНАЛ\n«АлксамбЕль готов! На свадьбы, юбилеи и корпоративы!»\n\nАвторская песня «За Ёлку, ДА!» — ДМ и СН вместе.'},
+
+      {id:'k21',role:'dm',category:'Образ',
+       title:'Образ Деда Мороза — грим и стандарт',
+       content:'ВОЛОСЫ И ПАРИК:\n— Свои волосы полностью убраны под парик или шапку — ни пряди не торчит. Проверяй у зеркала перед каждым выездом.\n— Борода густая, белая, аккуратная, без пожелтений. Никаких тёмных волос или чёрных бровей, видных из-под шапки.\n\nГРИМ:\n— Лёгкий грим, без перебора. Морщины не скрывать — это признак мудрости, часть образа.\n— Небольшой румянец на щеках + лёгкая бледность остального лица — как будто только с мороза.\n\nКОСТЮМ И ЗАПАХ:\n— Костюм чистый, отглаженный, без дефектов. Под шубой — нейтральная одежда телесного или белого цвета, ничего не торчит.\n— Обувь — валенки или сапоги в тон образу. Никаких кроссовок и кед.\n— Запах — хвоя, лес, мороз. Никакого табака и алкоголя.\n— Жвачка, телефон в руках, наушники — исключено.\n\nЛюбая деталь, из-за которой ребёнок может усомниться, — недопустима.'},
+
+      {id:'k22',role:'sn',category:'Образ',
+       title:'Образ Снегурочки — грим и стандарт',
+       content:'ВОЛОСЫ:\n— Свои волосы убраны под парик или аккуратно уложены под кокошник — не должны торчать. Проверяй перед каждым выездом.\n\nМАКИЯЖ:\n— Лёгкий волшебный макияж в морозном стиле: светлые тона, белые ресницы, снежинки или стразинки на щеках.\n— Никакого яркого вульгарного макияжа.\n\nЗАПАХ:\n— Приятный, лёгкий аромат. Свежее дыхание обязательно. Никакого запаха сигарет и алкоголя.\n\nГОЛОС И КОСТЮМ:\n— Голос ласковый, тихий, располагающий — никакой грубости и резкости.\n— Костюм аккуратный, без дефектов, в голубых и белых тонах. Ничего короткого или не соответствующего образу.\n— Никакой современной обуви (кроссовки, кеды), видной из-под костюма. Жвачка, телефон, наушники — исключено.\n\nЛюбая деталь, из-за которой ребёнок может усомниться, — недопустима.'},
+
+      {id:'k23',role:'all',category:'Образ',
+       title:'Взаимопроверка перед входом',
+       content:'Перед каждым выездом, за пару минут до входа, Дед Мороз и Снегурочка проверяют друг друга — быстро, но внимательно:\n\n— Не торчат ли свои волосы из-под парика, бороды или кокошника\n— На месте ли грим, не смазался ли румянец\n— Аккуратен ли костюм: ничего не съехало, не видно современной одежды или обуви из-под него\n— Нет ли постороннего запаха (сигареты, алкоголь) — дыхание свежее у обоих\n\nДед Мороз осматривает Снегурочку, Снегурочка — Деда Мороза. Это взаимная привычка, а не формальность: одна забытая деталь у напарника рушит образ так же, как своя собственная.\n\nЗолотое правило: образ — это не костюм, а каждая секунда, пока ты в нём. Помни об этом с момента, как оделся, и до момента, как оказался вне зоны видимости детей и гостей.'},
+    ]
+  };
+}
+// ── PIN ──
+function np(n){
+  if(pinBuf.length>=4)return;
+  pinBuf+=n;
+  upPD();
+  if(pinBuf.length===4)setTimeout(tryLogin,120);
+}
+function nd(){pinBuf=pinBuf.slice(0,-1);upPD();ge('pin-err').textContent=''}
+function upPD(){
+  for(let i=0;i<4;i++)ge('pd'+i).classList.toggle('on',i<pinBuf.length);
+}
+function tryLogin(){
+  D=load();
+  if(pinBuf===D.adminPin){CU={type:'admin'};showAdmin();return}
+  const s=D.staff.find(x=>x.pin===pinBuf);
+  if(s){CU={type:'staff',...s};showStaff();return}
+  pinBuf='';upPD();
+  const e=ge('pin-err');e.textContent='✗ Неверный PIN';
+  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+  setTimeout(()=>{e.textContent=''},2000);
+}
+
+// ── SCREENS ──
+function showS(id){
+  ['S-login','S-admin','S-staff'].forEach(s=>ge(s).classList.toggle('hidden',s!==id));
+}
+function logout(){
+  CU=null;pinBuf='';upPD();ge('pin-err').textContent='';showS('S-login');
+}
+function showAdmin(){
+  showS('S-admin');
+  ge('adm-date').textContent=fmtDF(new Date());
+  aTab('orders');
+}
+function showStaff(){
+  const u=CU,dm=u.role==='dm',em=dm?'🎅':'❄️',rl=dm?'Дед Мороз':'Снегурочка';
+  showS('S-staff');
+  ge('sf-wcard').classList.toggle('sn',!dm);
+  ge('sf-emoji').textContent=em;ge('sf-wname').textContent=u.name;ge('sf-wrole').textContent=rl;
+  ge('sf-name').textContent=em+' '+u.name;ge('sf-date').textContent=fmtDF(new Date());
+  rSfTabbar();
+  ge('sf-orders-title').textContent=can('viewAll')?'Все заказы':'Мои заказы';
+  sTab('orders');
+}
+
+// ── ADMIN TABS ──
+function aTab(t){
+  ['orders','staff','know','cal'].forEach(x=>{
+    ge('at-'+x).classList.toggle('hidden',x!==t);
+    ge('abt-'+x).classList.toggle('active',x===t);
+  });
+  if(t==='orders')rAdmOrders();
+  if(t==='staff'){rPayrollSummary();rStaffList('adm-staff');}
+  if(t==='know')rKnow('admin');
+  if(t==='cal')rCalendar();
+}
+
+// ── STAFF TABBAR (dynamic, depends on perms) ──
+function rSfTabbar(){
+  const tabs=[{id:'orders',icon:'🗓',label:can('viewAll')?'Заказы':'Мои заказы'},
+    {id:'know',icon:'📚',label:'База знаний'}];
+  if(can('manageStaff'))tabs.push({id:'staff',icon:'👥',label:'Сотрудники'});
+  ge('sf-tabbar').innerHTML=tabs.map(t=>
+    `<button class="tbb" id="sbt-${t.id}" onclick="sTab('${t.id}')"><span class="tbb-icon">${t.icon}</span>${t.label}</button>`
+  ).join('');
+}
+
+// ── STAFF TABS ──
+function sTab(t){
+  ['orders','know','staff'].forEach(x=>{
+    ge('st-'+x).classList.toggle('hidden',x!==t);
+    const b=ge('sbt-'+x);if(b)b.classList.toggle('active',x===t);
+  });
+  ge('sf-fab-order').classList.toggle('hidden',!(t==='orders'&&can('addOrders')));
+  ge('sf-chips').classList.toggle('hidden',!(t==='orders'&&can('viewAll')));
+  ge('sf-fab-know').classList.toggle('hidden',!(t==='know'&&can('manageKnowledge')));
+  if(t==='orders')rStfOrders();
+  if(t==='know')rKnow('staff');
+  if(t==='staff')rStaffList('sf-staff-list');
+}
+
+// ── RENDER: ADMIN ORDERS ──
+function rAdmOrders(){
+  D=load();
+  // Chips
+  const chips=[{id:'all',lb:'Все'},{id:'upcoming',lb:'Предстоящие'},{id:'done',lb:'Выполненные'},
+    ...D.staff.map(s=>({id:s.id,lb:(s.role==='dm'?'🎅':'❄️')+' '+s.name}))];
+  ge('adm-chips').innerHTML=chips.map(c=>
+    `<div class="chip ${c.id===aFilter?'on':''}" onclick="setF('${c.id}')">${c.lb}</div>`
+  ).join('');
+  // Orders
+  let os=[...D.orders];
+  if(aFilter==='upcoming')os=os.filter(o=>o.status==='upcoming');
+  else if(aFilter==='done')os=os.filter(o=>o.status==='done');
+  else if(aFilter!=='all')os=os.filter(o=>o.staffId===aFilter);
+  os.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const el=ge('adm-orders');
+  if(!os.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Заказов нет</div><div class="empty-s">Нажмите + чтобы добавить</div></div>`;return}
+  el.innerHTML=os.map(o=>oCard(o,true)).join('');
+}
+function setF(f){aFilter=f;rAdmOrders()}
+
+function oCard(o,showStf){
+  const s=D.staff.find(x=>x.id===o.staffId);
+  const sn=s?(s.role==='dm'?'🎅':'❄️')+' '+s.name:'?';
+  const bg=o.status==='done'?'<span class="badge b-dn">Выполнен</span>':'<span class="badge b-up">Предстоит</span>';
+  const sl=showStf?`<div class="oc-staff">👤 ${sn}</div>`:'';
+  return `<div class="oc" onclick="openDet('${o.id}')">
+    <div class="oc-hd"><div><div class="oc-date">${fmtD(o.date)}</div><div class="oc-time">⏰ ${o.time}</div></div>${bg}</div>
+    <div class="oc-child">👶 ${o.childName}, ${o.childAge} лет</div>
+    <div class="oc-addr">📍 ${o.address}</div>${sl}
+  </div>`;
+}
+
+// ── RENDER: STAFF LIST (used by admin + staff w/ manageStaff perm) ──
+function rStaffList(containerId){
+  D=load();
+  const el=ge(containerId);
+  if(!D.staff.length){el.innerHTML=`<div class="empty"><div class="empty-ico">👥</div><div class="empty-t">Сотрудников нет</div></div>`;return}
+  el.innerHTML=D.staff.map(s=>{
+    const e=staffEarnings(s.id);
+    const badges=[];
+    if(s.perms){
+      if(s.perms.addOrders)badges.push('➕ заказы');
+      if(s.perms.editOrders)badges.push('✏️ редакт.');
+      if(s.perms.viewAll)badges.push('👁 все заказы');
+      if(s.perms.manageStaff)badges.push('👥 команда');
+      if(s.perms.manageKnowledge)badges.push('📚 база');
+    }
+    return `<div class="sc" onclick="openEditStaff('${s.id}')">
+      <div class="av ${s.role==='dm'?'av-dm':'av-sn'}">${s.role==='dm'?'🎅':'❄️'}</div>
+      <div class="sc-info"><div class="sc-name">${s.name}</div>
+        <div class="sc-role">${s.role==='dm'?'Дед Мороз':'Снегурочка'} · ${e.count} зак.</div>
+        <div class="sc-earn">💰 ${e.doneSum.toLocaleString()} ₽${e.upSum?` · ожид. ${e.upSum.toLocaleString()} ₽`:''}</div>
+        ${badges.length?`<div class="perm-badges">${badges.map(b=>`<span class="pb">${b}</span>`).join('')}</div>`:''}
+      </div>
+      <span class="sc-pin">PIN: ${s.pin}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER: PAYROLL SUMMARY (admin, Сотрудники tab) ──
+function rPayrollSummary(){
+  D=load();
+  const done=D.staff.reduce((a,s)=>a+staffEarnings(s.id).doneSum,0);
+  const up=D.staff.reduce((a,s)=>a+staffEarnings(s.id).upSum,0);
+  ge('adm-payroll').innerHTML=`<div class="stats">
+    <div class="stat"><div class="stat-n" style="font-size:20px">${done.toLocaleString()} ₽</div><div class="stat-l">Заработано (выполн.)</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:20px">${up.toLocaleString()} ₽</div><div class="stat-l">Ожидается</div></div>
+  </div>`;
+}
+
+// ── RENDER: KNOWLEDGE ──
+function rKnow(ctx){
+  D=load();
+  let items=D.knowledge;
+  if(ctx==='staff'&&CU&&!can('manageKnowledge'))items=items.filter(k=>k.role==='all'||k.role===CU.role);
+  const cats={};
+  items.forEach(k=>{if(!cats[k.category])cats[k.category]=[];cats[k.category].push(k)});
+  let html='';
+  Object.entries(cats).forEach(([cat,arts])=>{
+    html+=`<div class="st">${cat}</div>`;
+    arts.forEach(k=>{
+      const ed=can('manageKnowledge')?`<button onclick="event.stopPropagation();openEditKnow('${k.id}')" style="background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:4px 6px">✏️</button>
+        <button onclick="event.stopPropagation();delKnowConf('${k.id}')" style="background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:4px 6px">🗑</button>`:'';
+      const who=k.role==='dm'?'🎅 Только ДМ':k.role==='sn'?'❄️ Только Снегурочка':'👥 Для всех';
+      html+=`<div class="kc"><div class="kc-hd" onclick="togK('${k.id}')">
+        <div><div class="kc-title">${k.title}</div><div class="kc-sub">${who}</div></div>
+        <div style="display:flex;align-items:center">${ed}<span class="kc-arr" id="ka-${k.id}">▾</span></div>
+      </div><div class="kc-body" id="kb-${k.id}">${k.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`;
+    });
+  });
+  if(!html)html=`<div class="empty"><div class="empty-ico">📚</div><div class="empty-t">База знаний пуста</div></div>`;
+  ge(ctx==='admin'?'adm-know':'sf-know').innerHTML=html;
+}
+function togK(id){
+  const b=ge('kb-'+id),a=ge('ka-'+id);
+  const o=b.classList.contains('open');
+  b.classList.toggle('open',!o);a.classList.toggle('open',!o);
+}
+
+// ── RENDER: STAFF ORDERS ──
+let sFilter='all';
+function rStfOrders(){
+  D=load();
+  const mine=D.orders.filter(o=>o.staffId===CU.id).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const up=mine.filter(o=>o.status==='upcoming'),dn=mine.filter(o=>o.status==='done');
+  ge('sf-sup').textContent=up.length;ge('sf-sdn').textContent=dn.length;
+  const el=ge('sf-orders');
+  if(can('viewAll')){
+    const chips=[{id:'all',lb:'Все'},{id:'upcoming',lb:'Предстоящие'},{id:'done',lb:'Выполненные'},
+      ...D.staff.map(s=>({id:s.id,lb:(s.role==='dm'?'🎅':'❄️')+' '+s.name}))];
+    ge('sf-chips').innerHTML=chips.map(c=>
+      `<div class="chip ${c.id===sFilter?'on':''}" onclick="setSF('${c.id}')">${c.lb}</div>`
+    ).join('');
+    let os=[...D.orders];
+    if(sFilter==='upcoming')os=os.filter(o=>o.status==='upcoming');
+    else if(sFilter==='done')os=os.filter(o=>o.status==='done');
+    else if(sFilter!=='all')os=os.filter(o=>o.staffId===sFilter);
+    os.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+    if(!os.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Заказов нет</div></div>`;return}
+    el.innerHTML=os.map(o=>oCard(o,true)).join('');
+    return;
+  }
+  if(!mine.length){el.innerHTML=`<div class="empty"><div class="empty-ico">🎄</div><div class="empty-t">Заказов пока нет</div><div class="empty-s">Ожидайте назначения от руководителя</div></div>`;return}
+  let html=up.map(o=>oCard(o,false)).join('');
+  if(dn.length)html+=`<div class="st" style="margin-top:20px">Выполненные</div>`+dn.map(o=>oCard(o,false)).join('');
+  el.innerHTML=html;
+}
+function setSF(f){sFilter=f;rStfOrders()}
+
+// ── CALENDAR (admin) ──
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelDate=null;
+function rCalendar(){
+  D=load();
+  const first=new Date(calYear,calMonth,1);
+  const startWD=(first.getDay()+6)%7;
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const todayStr=new Date().toISOString().slice(0,10);
+  const byDate={};
+  D.orders.forEach(o=>{(byDate[o.date]=byDate[o.date]||[]).push(o)});
+  let cells='';
+  for(let i=0;i<startWD;i++)cells+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const has=byDate[ds]&&byDate[ds].length;
+    const cls=['cal-day'];
+    if(ds===todayStr)cls.push('today');
+    if(has)cls.push('has');
+    if(ds===calSelDate)cls.push('sel');
+    cells+=`<div class="${cls.join(' ')}" onclick="selCalDay('${ds}')">${d}${has?'<div class="cal-dot"></div>':''}</div>`;
+  }
+  const MG2=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  ge('adm-cal').innerHTML=`
+    <div class="cal-hd">
+      <button class="cal-nav" onclick="calNav(-1)">‹</button>
+      <div class="cal-title">${MG2[calMonth]} ${calYear}</div>
+      <button class="cal-nav" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-wd"><div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div></div>
+    <div class="cal-grid">${cells}</div>`;
+  renderCalDay();
+}
+function calNav(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--}
+  if(calMonth>11){calMonth=0;calYear++}
+  rCalendar();
+}
+function selCalDay(ds){calSelDate=(calSelDate===ds)?null:ds;rCalendar()}
+function renderCalDay(){
+  const el=ge('adm-cal-day');
+  if(!calSelDate){el.innerHTML='';return}
+  D=load();
+  const os=D.orders.filter(o=>o.date===calSelDate).sort((a,b)=>a.time.localeCompare(b.time));
+  if(!os.length){el.innerHTML=`<div class="empty"><div class="empty-ico">🗓</div><div class="empty-t">На ${fmtD(calSelDate)} заказов нет</div></div>`;return}
+  el.innerHTML=`<div class="st">${fmtD(calSelDate)}</div>`+os.map(o=>oCard(o,true)).join('');
+}
+
+// ── ORDER DETAIL ──
+function openDet(id){
+  D=load();
+  const o=D.orders.find(x=>x.id===id);if(!o)return;
+  const s=D.staff.find(x=>x.id===o.staffId);
+  const sn=s?(s.role==='dm'?'🎅':'❄️')+' '+s.name:'Не назначен';
+  const canE=isAdmin()||can('editOrders');
+  const canDel=isAdmin();
+  const bg=o.status==='done'?'<span class="badge b-dn">✓ Выполнен</span>':'<span class="badge b-up">Предстоит</span>';
+  const notes=o.notes?`<div class="dr"><div class="di">⚠️</div><div><div class="dl">Особенности</div><div class="dv" style="color:#f4c430">${o.notes}</div></div></div>`:'';
+  const scen=o.scenario?`<div class="dr"><div class="di">📝</div><div><div class="dl">Сценарий</div><div class="dv" style="white-space:pre-wrap;font-size:14px">${o.scenario}</div></div></div>`:'';
+  const payoutRow=(o.payout!=null&&o.payout!=='')?`<div class="dr"><div class="di">💸</div><div><div class="dl">К выплате сотруднику</div><div class="dv" style="color:var(--blue);font-weight:700">${Number(o.payout).toLocaleString()} ₽</div></div></div>`:'';
+  const stBtn=o.status==='upcoming'?'✓ Отметить выполненным':'↩ Вернуть в работу';
+  const actions=canE
+    ?`<div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        ${canDel?`<button class="btn btn-ghost btn-sm" style="flex:1" onclick="delConf('${id}')">🗑</button>`:''}
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="togStatus('${id}')">${stBtn}</button>
+        <button class="btn btn-red btn-sm" style="flex:2" onclick="openEditOrder('${id}')">✏️ Изменить</button>
+      </div>`
+    :`<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-full ${o.status==='upcoming'?'btn-red':'btn-ghost'}" onclick="togStatus('${id}')">${stBtn}</button>
+      </div>`;
+  ge('det-body').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:22px;font-weight:800">${o.childName}</div>${bg}</div>
+    <div class="dr"><div class="di">📅</div><div><div class="dl">Дата и время</div><div class="dv">${fmtD(o.date)}, ${o.time}</div></div></div>
+    <div class="dr"><div class="di">📍</div><div><div class="dl">Адрес</div><div class="dv">${o.address}</div></div></div>
+    <div class="dr"><div class="di">👶</div><div><div class="dl">Ребёнок</div><div class="dv">${o.childName}, ${o.childAge} лет</div></div></div>
+    <div class="dr"><div class="di">🎁</div><div><div class="dl">Желание</div><div class="dv">${o.wishes||'Не указано'}</div></div></div>
+    ${notes}${scen}
+    <div class="dr"><div class="di">💰</div><div><div class="dl">Оплата</div><div class="dv" style="color:var(--gold);font-weight:700">${o.payment?o.payment.toLocaleString()+' ₽':'Не указана'}</div></div></div>
+    ${payoutRow}
+    <div class="dr"><div class="di">👤</div><div><div class="dl">Сотрудник</div><div class="dv">${sn}</div></div></div>
+    ${actions}`;
+  oMod('M-det');
+}
+
+function togStatus(id){
+  D=load();const o=D.orders.find(x=>x.id===id);if(!o)return;
+  o.status=o.status==='upcoming'?'done':'upcoming';save();
+  cAllM();toast(o.status==='done'?'✓ Заказ выполнен':'Возвращён в работу');
+  if(CU.type==='admin')rAdmOrders();else rStfOrders();
+}
+
+// ── ADD/EDIT ORDER ──
+function openAddOrder(){
+  D=load();eOid=null;
+  ge('ord-mtitle').textContent='Новый заказ';
+  ge('f-oid').value='';
+  ge('f-odate').value=new Date().toISOString().slice(0,10);
+  ge('f-otime').value='14:00';
+  ge('f-oaddr').value='';ge('f-ochild').value='';ge('f-oage').value='';
+  ge('f-owish').value='';ge('f-onotes').value='';ge('f-opay').value='3000';ge('f-opayout').value='';ge('f-oscen').value='';
+  ge('f-ostf').innerHTML=D.staff.map(s=>`<option value="${s.id}">${s.role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
+  cAllM();oMod('M-ord');
+}
+function openEditOrder(id){
+  D=load();eOid=id;const o=D.orders.find(x=>x.id===id);if(!o)return;
+  ge('ord-mtitle').textContent='Редактировать заказ';
+  ge('f-oid').value=o.id;ge('f-odate').value=o.date;ge('f-otime').value=o.time;
+  ge('f-oaddr').value=o.address;ge('f-ochild').value=o.childName;ge('f-oage').value=o.childAge;
+  ge('f-owish').value=o.wishes;ge('f-onotes').value=o.notes;ge('f-opay').value=o.payment;
+  ge('f-opayout').value=(o.payout!=null?o.payout:'');ge('f-oscen').value=o.scenario;
+  ge('f-ostf').innerHTML=D.staff.map(s=>`<option value="${s.id}" ${s.id===o.staffId?'selected':''}>${s.role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
+  cAllM();oMod('M-ord');
+}
+function saveOrder(){
+  const id=eOid||uid();
+  const payoutRaw=ge('f-opayout').value;
+  const o={id,staffId:ge('f-ostf').value,date:ge('f-odate').value,time:ge('f-otime').value,
+    address:ge('f-oaddr').value.trim(),childName:ge('f-ochild').value.trim(),
+    childAge:parseInt(ge('f-oage').value)||0,wishes:ge('f-owish').value.trim(),
+    notes:ge('f-onotes').value.trim(),payment:parseInt(ge('f-opay').value)||0,
+    payout:payoutRaw===''?null:(parseInt(payoutRaw)||0),
+    scenario:ge('f-oscen').value.trim(),status:'upcoming'};
+  if(!o.childName||!o.date||!o.address){toast('❗ Заполните обязательные поля');return}
+  D=load();const i=D.orders.findIndex(x=>x.id===id);
+  if(i>=0){o.status=D.orders[i].status;D.orders[i]=o}else D.orders.push(o);
+  save();cAllM();toast(eOid?'✓ Заказ обновлён':'✓ Заказ добавлен');
+  if(isAdmin())rAdmOrders();else rStfOrders();
+}
+
+// ── ADD/EDIT STAFF ──
+function openAddStaff(){
+  eSid=null;ge('stf-mtitle').textContent='Новый сотрудник';
+  ge('f-sid').value='';ge('f-sname').value='';ge('f-srole').value='dm';ge('f-spin').value='';
+  ['f-padd','f-pedit','f-pviewall','f-pstaff','f-pknow'].forEach(x=>ge(x).checked=false);
+  ge('stf-earn').classList.add('hidden');
+  oMod('M-stf');
+}
+function openEditStaff(id){
+  D=load();eSid=id;const s=D.staff.find(x=>x.id===id);if(!s)return;
+  ge('stf-mtitle').textContent='Редактировать сотрудника';
+  ge('f-sid').value=s.id;ge('f-sname').value=s.name;ge('f-srole').value=s.role;ge('f-spin').value=s.pin;
+  const p=s.perms||{};
+  ge('f-padd').checked=!!p.addOrders;ge('f-pedit').checked=!!p.editOrders;
+  ge('f-pviewall').checked=!!p.viewAll;ge('f-pstaff').checked=!!p.manageStaff;
+  ge('f-pknow').checked=!!p.manageKnowledge;
+  const e=staffEarnings(id);
+  ge('stf-earn-cnt').textContent=e.count;
+  ge('stf-earn-sum').textContent=e.doneSum.toLocaleString()+' ₽';
+  ge('stf-earn').classList.remove('hidden');
+  oMod('M-stf');
+}
+function saveStaff(){
+  const id=eSid||uid();
+  const pin=String(ge('f-spin').value).replace(/\D/g,'').slice(0,4);
+  const perms={addOrders:ge('f-padd').checked,editOrders:ge('f-pedit').checked,
+    viewAll:ge('f-pviewall').checked,manageStaff:ge('f-pstaff').checked,manageKnowledge:ge('f-pknow').checked};
+  const st={id,name:ge('f-sname').value.trim(),role:ge('f-srole').value,pin,perms};
+  if(!st.name||pin.length!==4){toast('❗ Укажите имя и PIN (4 цифры)');return}
+  D=load();
+  if(D.staff.find(s=>s.pin===pin&&s.id!==id)){toast('❗ Этот PIN уже занят');return}
+  if(pin===D.adminPin){toast('❗ PIN занят администратором');return}
+  const i=D.staff.findIndex(x=>x.id===id);
+  if(i>=0)D.staff[i]=st;else D.staff.push(st);
+  save();cAllM();toast(eSid?'✓ Сотрудник обновлён':'✓ Сотрудник добавлен');
+  if(isAdmin()){rPayrollSummary();rStaffList('adm-staff')}else{rStaffList('sf-staff-list')}
+}
+
+// ── ADD/EDIT KNOWLEDGE ──
+function openAddKnow(){
+  eKid=null;ge('knw-mtitle').textContent='Новая статья';
+  ge('f-kid').value='';ge('f-ktitle').value='';ge('f-kcat').value='';
+  ge('f-krole').value='all';ge('f-kcont').value='';oMod('M-knw');
+}
+function openEditKnow(id){
+  D=load();eKid=id;const k=D.knowledge.find(x=>x.id===id);if(!k)return;
+  ge('knw-mtitle').textContent='Редактировать статью';
+  ge('f-kid').value=k.id;ge('f-ktitle').value=k.title;ge('f-kcat').value=k.category;
+  ge('f-krole').value=k.role;ge('f-kcont').value=k.content;oMod('M-knw');
+}
+function saveKnow(){
+  const id=eKid||uid();
+  const k={id,title:ge('f-ktitle').value.trim(),category:ge('f-kcat').value.trim()||'Общее',
+    role:ge('f-krole').value,content:ge('f-kcont').value.trim()};
+  if(!k.title||!k.content){toast('❗ Заполните заголовок и текст');return}
+  D=load();const i=D.knowledge.findIndex(x=>x.id===id);
+  if(i>=0)D.knowledge[i]=k;else D.knowledge.push(k);
+  save();cAllM();toast('✓ Сохранено');
+  if(isAdmin())rKnow('admin');else rKnow('staff');
+}
+
+// ── DELETE ──
+function delConf(id){
+  ge('conf-txt').textContent='Заказ будет удалён навсегда.';
+  ge('conf-ok').onclick=()=>{
+    D=load();D.orders=D.orders.filter(o=>o.id!==id);save();cAllM();toast('Удалено');rAdmOrders();
+  };
+  cAllM();oMod('M-conf');
+}
+function delKnowConf(id){
+  D=load();const k=D.knowledge.find(x=>x.id===id);
+  ge('conf-txt').textContent=`Статья «${k?k.title:''}» будет удалена навсегда.`;
+  ge('conf-ok').onclick=()=>{
+    D=load();
+    D.knowledge=D.knowledge.filter(x=>x.id!==id);
+    D.deletedKnowledge=D.deletedKnowledge||[];
+    if(!D.deletedKnowledge.includes(id))D.deletedKnowledge.push(id);
+    save();cAllM();toast('Удалено');
+    if(isAdmin())rKnow('admin');else rKnow('staff');
+  };
+  cAllM();oMod('M-conf');
+}
+
+// ── MODALS ──
+function oMod(id){ge('MOV').classList.remove('hidden');ge(id).classList.remove('hidden')}
+function cModal(e){if(e&&e.target!==ge('MOV'))return;cAllM()}
+function cAllM(){
+  ge('MOV').classList.add('hidden');
+  ['M-det','M-ord','M-stf','M-knw','M-conf'].forEach(id=>ge(id).classList.add('hidden'));
+}
+
+// ── TOAST ──
+let tTimer;
+function toast(msg,dur=2500){
+  const el=ge('toast-el');el.textContent=msg;el.classList.add('show');
+  clearTimeout(tTimer);tTimer=setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// ── SNOWFLAKES ──
+function mkSnow(){
+  const el=ge('snowflakes');if(!el)return;
+  const f=['❄','✦','*','·','❅'];
+  for(let i=0;i<18;i++){
+    const s=document.createElement('div');s.className='sf';
+    s.textContent=f[Math.floor(Math.random()*f.length)];
+    s.style.left=Math.random()*100+'%';
+    s.style.animationDuration=(7+Math.random()*9)+'s';
+    s.style.animationDelay=(-Math.random()*12)+'s';
+    s.style.fontSize=(8+Math.random()*14)+'px';
+    el.appendChild(s);
+  }
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded',()=>{D=load();mkSnow();showS('S-login')});
+</script>
+</body>
+</html>
