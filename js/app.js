@@ -1163,24 +1163,43 @@ function loadPerformersInto(selDm, selSn) {
     if (sn) sn.innerHTML = opt('sn', selSn);
   }).catch(() => {});
 }
-function writeAssignmentForDeal(d) {
-  const fs = animatorFs(); if (!fs) return;
-  const docId = 'deal_' + d.id;
-  if (!d.dmId && !d.snId) { fs.collection('assignments').doc(docId).delete().catch(() => {}); return; }
-  const client = d.clientId ? state.clients.find(c => c.id === d.clientId) : null;
-  const asg = {
-    dmId: d.dmId || '', snId: d.snId || '',
-    date: d.date || '', time: d.time || '',
-    address: d.address || '', childName: d.title || (client ? client.name : 'Заказ'), childAge: 0, wishes: '',
-    notes: [d.note, client ? ('Клиент: ' + client.name + (client.phone ? ', ' + client.phone : '')) : ''].filter(Boolean).join('\n'),
+// Данные заказа (без исполнителей) из сделки — для зеркала в приложение
+function dealOrderInfo(d) {
+  const c = d.clientId ? state.clients.find(x => x.id === d.clientId) : null;
+  return {
+    childName: d.title || 'Заказ', childAge: 0, wishes: '',
+    date: d.date || '', time: d.time || '', address: d.address || '',
     payment: Number(d.amount) || 0,
-    dmPayout: (d.dmPayout != null && d.dmPayout !== '') ? Number(d.dmPayout) : null,
-    snPayout: (d.snPayout != null && d.snPayout !== '') ? Number(d.snPayout) : null,
-    scenario: '', status: (d.stage === 'done' ? 'done' : 'upcoming'),
+    notes: [d.note, c ? ('Клиент: ' + c.name + (c.phone ? ', ' + c.phone : '')) : ''].filter(Boolean).join('\n'),
+    status: (d.stage === 'done' ? 'done' : 'upcoming'),
     dealId: d.id, source: 'crm', updatedAt: new Date().toISOString(),
   };
-  fs.collection('assignments').doc(docId).set(asg, { merge: true }).catch(() => {});
 }
+// Назначение исполнителей из карточки сделки. Пишем слоты + инфо о заказе
+// (merge). Заказ НЕ удаляем при снятии — остаётся как «не назначен».
+function writeAssignmentForDeal(d) {
+  const fs = animatorFs(); if (!fs) return;
+  fs.collection('assignments').doc('deal_' + d.id).set(Object.assign({
+    dmId: d.dmId || '', snId: d.snId || '',
+    dmPayout: (d.dmPayout != null && d.dmPayout !== '') ? Number(d.dmPayout) : null,
+    snPayout: (d.snPayout != null && d.snPayout !== '') ? Number(d.snPayout) : null,
+  }, dealOrderInfo(d)), { merge: true }).catch(() => {});
+}
+// Зеркало: ближайшие заказы (будущие даты) из CRM → приложение «Аниматор Про».
+// В общую базу уходят только предстоящие заказы, не вся база клиентов.
+let _mirrorSig = {}, _mirrorTimer = null;
+function mirrorDealsToApp() {
+  const fs = animatorFs(); if (!fs) return;
+  const today = new Date().toISOString().slice(0, 10);
+  state.deals.filter(d => d.date && d.date >= today && d.stage !== 'cancelled').forEach(d => {
+    const info = dealOrderInfo(d);
+    const sig = JSON.stringify([info.childName, info.date, info.time, info.address, info.payment, info.notes, info.status]);
+    if (_mirrorSig[d.id] === sig) return;
+    _mirrorSig[d.id] = sig;
+    fs.collection('assignments').doc('deal_' + d.id).set(info, { merge: true }).catch(() => {});
+  });
+}
+function scheduleMirror() { if (_mirrorTimer) return; _mirrorTimer = setTimeout(() => { _mirrorTimer = null; mirrorDealsToApp(); }, 1500); }
 
 function openDealForm(id = null, presetClientId = null) {
   const d = id ? state.deals.find(x => x.id === id) : null;
@@ -2417,6 +2436,7 @@ function startApp(loaded) {
   Leads.start();
   // ссылка из бота ведёт сразу в лиды: …/crm/#leads
   showView(location.hash === '#leads' ? 'leads' : 'dashboard');
+  scheduleMirror(); // отправить ближайшие заказы в приложение «Аниматор Про»
 }
 
 function init() {
@@ -2431,6 +2451,7 @@ function init() {
         state.tasks = remote.tasks || [];
         maybeAutoBackup();
         if (uiStarted) render();
+        scheduleMirror();
       },
     });
   } else {
