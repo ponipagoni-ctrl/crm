@@ -417,13 +417,13 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
       <button class="fmt-btn" onclick="pickFormat('home',this)">
         <div class="fmt-icon">🏠</div>
         <div class="fmt-name">Поздравление на дом</div>
-        <div class="fmt-from" id="fp_home">от 5 000 ₽</div>
+        <div class="fmt-from" id="fp_home">от 7 000 ₽</div>
       </button>
 
       <button class="fmt-btn" onclick="pickFormat('corp',this)">
         <div class="fmt-icon">🏢</div>
         <div class="fmt-name">Корпоратив</div>
-        <div class="fmt-from" id="fp_corp">от 15 000 ₽</div>
+        <div class="fmt-from" id="fp_corp">от 18 000 ₽</div>
       </button>
 
       <button class="fmt-btn" onclick="pickFormat('mass',this)">
@@ -443,11 +443,8 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
   <div class="card" id="s3">
     <div class="step-head"><div class="step-num">3</div> Когда праздник</div>
     <div class="choice-grid">
-      <button class="choice-btn period-btn" onclick="pickPeriod('t1',this)">
-        <div class="ch-main">1–19 декабря</div><div class="ch-price" id="pp_t1"></div>
-      </button>
       <button class="choice-btn period-btn" onclick="pickPeriod('t2',this)">
-        <div class="ch-main">20–27 декабря</div><div class="ch-price" id="pp_t2"></div>
+        <div class="ch-main">1–27 декабря</div><div class="ch-price" id="pp_t2"></div>
       </button>
       <button class="choice-btn period-btn" onclick="pickPeriod('t3',this)">
         <div class="ch-main">28–30 декабря</div><div class="ch-price" id="pp_t3"></div>
@@ -490,9 +487,6 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
       </button>
       <button class="choice-btn zone-btn" onclick="pickZone('z3',this)">
         <div class="ch-main">35–50 км</div><div class="ch-sub">Первоуральск, Ревда</div><div class="ch-price">+5 000 ₽</div>
-      </button>
-      <button class="choice-btn zone-btn" onclick="pickZone('far',this)">
-        <div class="ch-main">Дальше 50 км</div><div class="ch-price">по договорённости</div>
       </button>
     </div>
   </div>
@@ -564,8 +558,8 @@ const P = {
 };
 /*
   Tier key:
-    t1   = до 20 декабря (1–19 дек)
-    t2   = 20–27 декабря
+    t1   = не используется (раньше 1–19 декабря; с 07.11.2026 эти даты по цене t2)
+    t2   = 1–27 декабря
     t3   = 28–30 декабря
     d31m = 31 декабря до 16:00
     d31e = 31 декабря 16:00–22:00
@@ -575,15 +569,14 @@ const P = {
 */
 
 /* ─── Periods, travel zones, Telegram ──────────────────────────── */
-const PERIODS = { t1:'1–19 декабря', t2:'20–27 декабря', t3:'28–30 декабря', d31:'31 декабря', jan:'1–10 января' };
+const PERIODS = { t2:'1–27 декабря', t3:'28–30 декабря', d31:'31 декабря', jan:'1–10 января' };
 const SLOTS = { m:'до 16:00', e:'16:00–22:00', n:'после 22:00 ★' };
 // Фиксированная доплата за выезд, ₽ (null — по договорённости)
 const ZONES = {
   city: { name:'Екатеринбург', add:0 },
   z1:   { name:'до 20 км от города', add:2000 },
   z2:   { name:'20–35 км от города', add:3000 },
-  z3:   { name:'35–50 км от города', add:5000 },
-  far:  { name:'дальше 50 км от города', add:null }
+  z3:   { name:'35–50 км от города', add:5000 }
 };
 const FMT_NAMES = { home:'Поздравление на дом', corp:'Корпоратив', mass:'Массовый праздник' };
 const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
@@ -694,9 +687,9 @@ function basePrice(tier, fmt, period, slot) {
 function updateHints() {
   if (S.tier) {
     const t = P[S.tier];
-    document.getElementById('fp_home').textContent = `от ${rub(t.home.t1)}`;
-    document.getElementById('fp_corp').textContent = `от ${rub(t.corp.t1)}`;
-    document.getElementById('fp_mass').textContent = `от ${rub(t.mass.t1)}`;
+    document.getElementById('fp_home').textContent = `от ${rub(t.home.t2)}`;
+    document.getElementById('fp_corp').textContent = `от ${rub(t.corp.t2)}`;
+    document.getElementById('fp_mass').textContent = `от ${rub(t.mass.t2)}`;
   }
   const ok = S.tier && S.fmt;
   Object.keys(PERIODS).forEach(p => {
