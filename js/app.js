@@ -1147,6 +1147,60 @@ function staffNames() {
 }
 
 /* --------- deal form --------- */
+/* --------- Назначение исполнителей в приложение «Аниматор Про» --------- */
+function animatorFs() {
+  return (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) ? firebase.firestore() : null;
+}
+function loadPerformersInto(selDm, selSn) {
+  const fs = animatorFs(); if (!fs) return;
+  fs.collection('performers').get().then(snap => {
+    const ps = snap.docs.map(x => ({ id: x.id, ...x.data() }));
+    const opt = (role, sel) => `<option value="">— не назначен —</option>` +
+      ps.filter(p => p.role === role)
+        .map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${role === 'dm' ? '🎅' : '❄️'} ${esc(p.name)}</option>`).join('');
+    const dm = document.getElementById('df-dm'), sn = document.getElementById('df-sn');
+    if (dm) dm.innerHTML = opt('dm', selDm);
+    if (sn) sn.innerHTML = opt('sn', selSn);
+  }).catch(() => {});
+}
+// Данные заказа (без исполнителей) из сделки — для зеркала в приложение
+function dealOrderInfo(d) {
+  const c = d.clientId ? state.clients.find(x => x.id === d.clientId) : null;
+  return {
+    childName: d.title || 'Заказ', childAge: 0, wishes: '',
+    date: d.date || '', time: d.time || '', address: d.address || '',
+    payment: Number(d.amount) || 0,
+    notes: [d.note, c ? ('Клиент: ' + c.name + (c.phone ? ', ' + c.phone : '')) : ''].filter(Boolean).join('\n'),
+    status: (d.stage === 'done' ? 'done' : 'upcoming'),
+    dealId: d.id, source: 'crm', updatedAt: new Date().toISOString(),
+  };
+}
+// Назначение исполнителей из карточки сделки. Пишем слоты + инфо о заказе
+// (merge). Заказ НЕ удаляем при снятии — остаётся как «не назначен».
+function writeAssignmentForDeal(d) {
+  const fs = animatorFs(); if (!fs) return;
+  fs.collection('assignments').doc('deal_' + d.id).set(Object.assign({
+    dmId: d.dmId || '', snId: d.snId || '',
+    dmPayout: (d.dmPayout != null && d.dmPayout !== '') ? Number(d.dmPayout) : null,
+    snPayout: (d.snPayout != null && d.snPayout !== '') ? Number(d.snPayout) : null,
+  }, dealOrderInfo(d)), { merge: true }).catch(() => {});
+}
+// Зеркало: ближайшие заказы (будущие даты) из CRM → приложение «Аниматор Про».
+// В общую базу уходят только предстоящие заказы, не вся база клиентов.
+let _mirrorSig = {}, _mirrorTimer = null;
+function mirrorDealsToApp() {
+  const fs = animatorFs(); if (!fs) return;
+  const today = new Date().toISOString().slice(0, 10);
+  state.deals.filter(d => d.date && d.date >= today && d.stage !== 'cancelled').forEach(d => {
+    const info = dealOrderInfo(d);
+    const sig = JSON.stringify([info.childName, info.date, info.time, info.address, info.payment, info.notes, info.status]);
+    if (_mirrorSig[d.id] === sig) return;
+    _mirrorSig[d.id] = sig;
+    fs.collection('assignments').doc('deal_' + d.id).set(info, { merge: true }).catch(() => {});
+  });
+}
+function scheduleMirror() { if (_mirrorTimer) return; _mirrorTimer = setTimeout(() => { _mirrorTimer = null; mirrorDealsToApp(); }, 1500); }
+
 function openDealForm(id = null, presetClientId = null) {
   const d = id ? state.deals.find(x => x.id === id) : null;
   const clientOptions = state.clients
@@ -1195,6 +1249,17 @@ function openDealForm(id = null, presetClientId = null) {
       <div class="field"><label>Выплата сотруднику, ₽</label>
         <input id="df-staffpay" type="number" inputmode="numeric" placeholder="2000" value="${d?.staffPay || ''}"></div>
     </div>
+    <div class="field"><label>🎅 Назначить в приложение (Аниматор Про)</label>
+      <div class="form-row">
+        <select id="df-dm"><option value="">🎅 Дед Мороз —</option></select>
+        <select id="df-sn"><option value="">❄️ Снегурочка —</option></select>
+      </div></div>
+    <div class="form-row">
+      <div class="field"><label>Выплата ДМ, ₽</label>
+        <input id="df-dmpay" type="number" inputmode="numeric" value="${d?.dmPayout ?? ''}"></div>
+      <div class="field"><label>Выплата СГ, ₽</label>
+        <input id="df-snpay" type="number" inputmode="numeric" value="${d?.snPayout ?? ''}"></div>
+    </div>
     <div class="field"><label>Адрес</label>
       <input id="df-address" type="text" placeholder="ул. Умельцев, 9" value="${esc(d?.address || '')}"></div>
     <div class="field"><label>Заметка</label>
@@ -1206,6 +1271,7 @@ function openDealForm(id = null, presetClientId = null) {
     <button class="btn btn-primary" onclick="saveDealForm('${d ? d.id : ''}')">Сохранить</button>
   </div>`);
   setTimeout(() => { const el = document.getElementById('df-title'); if (el) el.focus(); }, 50);
+  setTimeout(() => loadPerformersInto(d?.dmId || '', d?.snId || ''), 60);
 }
 
 function saveDealForm(id) {
@@ -1225,14 +1291,25 @@ function saveDealForm(id) {
     address: document.getElementById('df-address').value.trim(),
     note: document.getElementById('df-note').value.trim(),
   };
+  const dmEl = document.getElementById('df-dm'), snEl = document.getElementById('df-sn');
+  const dmPayEl = document.getElementById('df-dmpay'), snPayEl = document.getElementById('df-snpay');
+  if (dmEl) data.dmId = dmEl.value || '';
+  if (snEl) data.snId = snEl.value || '';
+  if (dmPayEl) data.dmPayout = dmPayEl.value === '' ? null : (Number(dmPayEl.value) || 0);
+  if (snPayEl) data.snPayout = snPayEl.value === '' ? null : (Number(snPayEl.value) || 0);
+  let dealObj;
   if (id) {
-    Object.assign(state.deals.find(x => x.id === id), data);
+    dealObj = state.deals.find(x => x.id === id);
+    Object.assign(dealObj, data);
     toast('Сделка обновлена', 'success');
   } else {
-    state.deals.push({ id: uid(), createdAt: Date.now(), ...data });
+    dealObj = { id: uid(), createdAt: Date.now(), ...data };
+    state.deals.push(dealObj);
     toast('Сделка создана 💼', 'success');
   }
-  save(); closeModal(); render();
+  save();
+  writeAssignmentForDeal(dealObj);
+  closeModal(); render();
 }
 
 function deleteDeal(id) {
@@ -2359,6 +2436,7 @@ function startApp(loaded) {
   Leads.start();
   // ссылка из бота ведёт сразу в лиды: …/crm/#leads
   showView(location.hash === '#leads' ? 'leads' : 'dashboard');
+  scheduleMirror(); // отправить ближайшие заказы в приложение «Аниматор Про»
 }
 
 function init() {
@@ -2373,6 +2451,7 @@ function init() {
         state.tasks = remote.tasks || [];
         maybeAutoBackup();
         if (uiStarted) render();
+        scheduleMirror();
       },
     });
   } else {
