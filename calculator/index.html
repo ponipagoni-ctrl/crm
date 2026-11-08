@@ -602,6 +602,26 @@ function goal(name) {
   try { ym(YM_ID, 'reachGoal', name); } catch (e) {}
 }
 
+/* ─── Свой учёт броней (без персональных данных) ───────────────────
+   Дублирует ключевые цели в нашу базу, чтобы видеть реальное число
+   «Забронировать» независимо от Метрики и баннера cookie.
+   Пишем только параметры расчёта: пара, формат, период, зона, сумма,
+   источник рекламы. Ни имени, ни телефона, ни cookie, ни IP. */
+const EV_URL = 'https://firestore.googleapis.com/v1/projects/makeday-crm/databases/(default)/documents/calc_events?key=AIzaSyDPjkBJNawCeR_M1iDN8OD3v_fo3cRWu84';
+const EV_VISIT = Math.random().toString(36).slice(2, 10); // живёт только до перезагрузки страницы
+function track(type) {
+  try {
+    const s = v => ({ stringValue: String(v == null ? '' : v).slice(0, 40) });
+    const body = { fields: {
+      type: s(type), pair: s(S.pair), fmt: s(S.fmt), period: s(S.period),
+      slot: s(S.slot), zone: s(S.zone), total: { integerValue: String(Math.round(S.total || 0)) },
+      from: s(FROM), visit: s(EV_VISIT), at: { timestampValue: new Date().toISOString() }
+    } };
+    fetch(EV_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body) }).catch(() => {});
+  } catch (e) {}
+}
+
 let S = { pair:null, tier:null, fmt:null, period:null, slot:'m', zone:'city', ready:false, message:'' };
 
 function selectIn(selector, el) {
@@ -732,6 +752,7 @@ function calc() {
   const zone = ZONES[S.zone];
   const add = zone.add || 0;
   const total = base + add;
+  S.total = total;
   const pref = zone.add === null ? 'от ' : '';
   const when = PERIODS[S.period] + (S.period === 'd31' ? ' · ' + SLOTS[S.slot] : '');
 
@@ -753,7 +774,7 @@ function calc() {
   sbMain.textContent = pref + rub(total);
   sbBtn.className = 'sb-btn';
   sbBtn.textContent = '✈️ Забронировать';
-  if (!S.priceShown) { S.priceShown = true; goal('price_shown'); }
+  if (!S.priceShown) { S.priceShown = true; goal('price_shown'); track('price_shown'); }
 
   S.message = [
     'Здравствуйте! Хочу забронировать Деда Мороза и Снегурочку:',
@@ -777,6 +798,7 @@ function onBarBtn() {
 function bookTg() {
   if (!S.ready) return;
   goal('book_click');
+  track('book_click');
   try { navigator.clipboard.writeText(S.message).catch(() => {}); } catch (e) {}
   window.open(TG_LINK + '?text=' + encodeURIComponent(S.message), '_blank');
   showToast('Текст заявки скопирован — если чат открылся пустым, просто вставьте его');
