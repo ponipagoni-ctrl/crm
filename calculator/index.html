@@ -360,7 +360,10 @@ function loadMetrika() {
   for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
   k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
   (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
-  ym(113728081, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:false });
+  // 113728081 — исходный счётчик; 114130830 — счётчик аккаунта Директа (kiti306)
+  [113728081, 114130830].forEach(function (id) {
+    ym(id, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:false });
+  });
 }
 try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catch (e) {}
 </script>
@@ -597,9 +600,9 @@ const FROM = (() => {
 
 /* ─── State ─────────────────────────────────────────────────────── */
 /* ─── Яндекс Метрика: цели ──────────────────────────────────────── */
-const YM_ID = 113728081;
+const YM_IDS = [113728081, 114130830];
 function goal(name) {
-  try { ym(YM_ID, 'reachGoal', name); } catch (e) {}
+  YM_IDS.forEach(id => { try { ym(id, 'reachGoal', name); } catch (e) {} });
 }
 
 /* ─── Свой учёт броней (без персональных данных) ───────────────────
