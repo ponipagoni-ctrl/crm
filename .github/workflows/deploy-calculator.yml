@@ -1,0 +1,66 @@
+name: Deploy calculator to dedmoroz96.ru
+
+# Калькулятор (папка calculator/) выкладывается на собственный домен
+# dedmoroz96.ru (хостинг LITE.HOST) при каждом изменении.
+# Доступ к хостингу хранится только в секретах репозитория:
+#   FTP_SERVER   — адрес сервера, можно со схемой: ftp://host или sftp://host
+#   FTP_USERNAME — логин FTP/SFTP
+#   FTP_PASSWORD — пароль FTP/SFTP
+# Папка сайта на хостинге — переменная репозитория FTP_DIR
+# (по умолчанию www/dedmoroz96.ru).
+# Пока секретов нет, выкладка просто пропускается.
+
+on:
+  push:
+    branches: [claude/crm-system-clients-doqqv9]
+    paths:
+      - 'calculator/**'
+      - '.github/workflows/deploy-calculator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: calculator-ftp
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      FTP_DIR: ${{ vars.FTP_DIR || 'www/dedmoroz96.ru' }}
+    steps:
+      - name: Check hosting secrets
+        id: cfg
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$LFTP_PASSWORD" ]; then
+            echo "Секреты FTP_SERVER / FTP_USERNAME / FTP_PASSWORD не заданы — выкладку пропускаю."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ready == 'true'
+
+      - name: Install lftp
+        if: steps.cfg.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Upload calculator/ to hosting
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          # Без --delete: на хостинге может лежать служебная папка .well-known
+          # (продление SSL Let's Encrypt), её трогать нельзя.
+          lftp -c "
+            set net:max-retries 3; set net:timeout 30;
+            set ftp:ssl-allow yes; set ssl:verify-certificate no;
+            set sftp:auto-confirm yes;
+            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\";
+            mkdir -p -f \"$FTP_DIR\";
+            mirror -R --verbose --no-perms calculator/ \"$FTP_DIR\";
+          "
