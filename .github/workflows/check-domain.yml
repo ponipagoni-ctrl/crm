@@ -29,7 +29,7 @@ jobs:
 
       - name: Records on hosting DNS
         run: |
-          for ns in ns5.lite-host.in ns6.lite-host.su; do
+          for ns in ns1.registrant.ru ns2.registrant.ru ns5.lite-host.in ns6.lite-host.su; do
             echo "== $ns =="
             dig +short A "$D" @"$ns" || true
             dig +short A "www.$D" @"$ns" || true
