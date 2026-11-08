@@ -1,0 +1,53 @@
+name: Check calculator domain
+
+# Ручная диагностика домена dedmoroz96.ru: делегирование (NS) в зоне .ru,
+# A-записи на DNS хостинга и в публичных резолверах, ответ сайта по
+# http/https и сертификат. Запуск: Actions → Check calculator domain → Run.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      D: dedmoroz96.ru
+    steps:
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils >/dev/null
+
+      - name: Delegation in .ru registry
+        run: |
+          echo "== NS у реестра .ru (a.dns.ripn.net) =="
+          dig +norec NS "$D" @a.dns.ripn.net | sed -n '/AUTHORITY SECTION/,/^$/p'
+          echo "== whois (статус делегирования) =="
+          sudo apt-get install -y -qq whois >/dev/null
+          whois "$D" | grep -iE 'nserver|state|registrar|paid-till' || true
+
+      - name: Records on hosting DNS
+        run: |
+          for ns in ns5.lite-host.in ns6.lite-host.su; do
+            echo "== $ns =="
+            dig +short A "$D" @"$ns" || true
+            dig +short A "www.$D" @"$ns" || true
+          done
+
+      - name: Public resolvers
+        run: |
+          for r in 8.8.8.8 1.1.1.1 77.88.8.8; do
+            echo "== $r: NS / A =="
+            dig +short NS "$D" @"$r" || true
+            dig +short A "$D" @"$r" || true
+          done
+
+      - name: Website
+        run: |
+          echo "== http =="
+          curl -sS -m 20 -o /dev/null -w "%{http_code} -> %{redirect_url}\n" "http://$D/" || true
+          curl -sS -m 20 "http://$D/" | grep -o '<title>[^<]*</title>' || true
+          echo "== https (сертификат) =="
+          curl -sS -m 20 -o /dev/null -w "%{http_code}\n" "https://$D/" || true
+          echo | openssl s_client -connect "$D:443" -servername "$D" 2>/dev/null | openssl x509 -noout -issuer -subject -enddate 2>/dev/null || echo "сертификат не получен"
