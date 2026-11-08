@@ -25,7 +25,7 @@ jobs:
           dig +norec NS "$D" @a.dns.ripn.net | sed -n '/AUTHORITY SECTION/,/^$/p'
           echo "== whois (статус делегирования) =="
           sudo apt-get install -y -qq whois >/dev/null
-          whois "$D" | grep -iE 'nserver|state|registrar|paid-till' || true
+          whois "$D" | grep -vE '^%|^$' | head -30 || true
 
       - name: Records on hosting DNS
         run: |
