@@ -561,7 +561,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <div class="bs-title" id="bsTitle">Как вам удобнее связаться?</div>
     <div class="bs-sub">Расчёт уже скопирован, его можно сразу вставить в сообщение</div>
     <a class="bs-opt main" href="tel:+79090175865" onclick="bookVia('call')">📞 Позвонить: +7 (909) 017-58-65</a>
-    <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX<span style="display:block;font-weight:500;font-size:.8em;opacity:.7">найдите по номеру +7 909 017-58-65</span></button>
+    <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX</button>
     <button type="button" class="bs-opt" onclick="bookVia('tg')">✈️ Написать в Telegram</button>
     <button type="button" class="bs-close" onclick="closeBook()">Отмена</button>
   </div>
@@ -629,8 +629,7 @@ const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
 // Чат для брони
 const TG_LINK = 'https://t.me/marsssellin';
 // Профиль в MAX: Настройки → «Пригласить друзей» → «Скопировать ссылку» (вид https://max.ru/u/...).
-// Пока пусто, кнопка MAX открывает поиск по номеру: пользователь находит контакт сам.
-const MAX_LINK = '';
+const MAX_LINK = 'https://max.ru/u/f9LHodD0cOKdVo8GiP-J0FlJX01SPWoygkFnaPHC16w4fZpHLggUwj4ozUg';
 // Откуда пришёл клиент: метка utm_source в ссылке рекламы (Директ, Авито, ВК, ТВ)
 const UTM_NAMES = { yandex: 'Яндекс', avito: 'Авито', vk: 'ВКонтакте', tv: 'ТВ-конкурс', tg: 'Telegram' };
 const FROM = (() => {
