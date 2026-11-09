@@ -207,7 +207,7 @@ header p { color: var(--text-muted); font-size: 1em; }
 .bs-title { font-weight: 800; font-size: 1.15em; margin-bottom: 4px; }
 .bs-sub { color: var(--text-muted); font-size: .85em; margin-bottom: 16px; }
 .bs-opt {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
   width: 100%; padding: 14px 16px; margin-bottom: 10px;
   border-radius: 14px; border: 1px solid var(--card-border);
   background: var(--card-bg); color: var(--white);
@@ -561,7 +561,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <div class="bs-title" id="bsTitle">Как вам удобнее связаться?</div>
     <div class="bs-sub">Расчёт уже скопирован, его можно сразу вставить в сообщение</div>
     <a class="bs-opt main" href="tel:+79090175865" onclick="bookVia('call')">📞 Позвонить: +7 (909) 017-58-65</a>
-    <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX</button>
+    <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX<span style="display:block;font-weight:500;font-size:.8em;opacity:.7">найдите по номеру +7 909 017-58-65</span></button>
     <button type="button" class="bs-opt" onclick="bookVia('tg')">✈️ Написать в Telegram</button>
     <button type="button" class="bs-close" onclick="closeBook()">Отмена</button>
   </div>
