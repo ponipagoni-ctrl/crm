@@ -190,6 +190,35 @@ header p { color: var(--text-muted); font-size: 1em; }
 }
 .sb-btn.ghost { background: transparent; color: var(--gold); }
 
+/* ── Booking choice ── */
+#bookSheet {
+  position: fixed; inset: 0; z-index: 12;
+  background: rgba(0,0,0,.7);
+  display: none; align-items: flex-end; justify-content: center;
+  padding: 16px;
+}
+#bookSheet.open { display: flex; }
+.bs-card {
+  width: 100%; max-width: 420px; margin-bottom: env(safe-area-inset-bottom);
+  background: var(--blue-dark); border: 1px solid var(--card-border);
+  border-radius: 18px; padding: 22px 18px 16px; text-align: center;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.45);
+}
+.bs-title { font-weight: 800; font-size: 1.15em; margin-bottom: 4px; }
+.bs-sub { color: var(--text-muted); font-size: .85em; margin-bottom: 16px; }
+.bs-opt {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 14px 16px; margin-bottom: 10px;
+  border-radius: 14px; border: 1px solid var(--card-border);
+  background: var(--card-bg); color: var(--white);
+  font-size: 1em; font-weight: 700; text-decoration: none; cursor: pointer;
+}
+.bs-opt:hover { border-color: var(--gold); color: var(--gold); }
+.bs-opt.main { background: var(--gold); color: var(--blue-deep); border-color: var(--gold); }
+.bs-opt.main:hover { background: var(--gold-light); color: var(--blue-deep); }
+.bs-close { background: none; border: none; color: var(--text-muted); font-size: .9em; padding: 8px; cursor: pointer; }
+@media (min-width: 541px) { #bookSheet { align-items: center; } }
+
 /* ── Toast ── */
 #toast {
   position: fixed; left: 50%; bottom: 96px; z-index: 6;
@@ -504,7 +533,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <div class="price-note" id="priceNote"></div>
     <div class="breakdown" id="breakdown"></div>
     <div class="cta-wrap">
-      <button type="button" class="btn-primary" onclick="bookTg()">✈️ Забронировать в Telegram</button>
+      <button type="button" class="btn-primary" onclick="openBook()">Забронировать</button>
     </div>
     <div style="margin-top:16px;font-size:.95em;color:rgba(255,255,255,.75);letter-spacing:.3px">
       📞 <a href="tel:+79090175865" style="color:var(--gold);text-decoration:none;font-weight:700">+7 (909) 017-58-65</a>
@@ -526,6 +555,17 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
   </div>
 </div>
 <div id="toast"></div>
+
+<div id="bookSheet" role="dialog" aria-modal="true" aria-labelledby="bsTitle" onclick="if (event.target === this) closeBook()">
+  <div class="bs-card">
+    <div class="bs-title" id="bsTitle">Как вам удобнее связаться?</div>
+    <div class="bs-sub">Расчёт уже скопирован, его можно сразу вставить в сообщение</div>
+    <a class="bs-opt main" href="tel:+79090175865" onclick="bookVia('call')">📞 Позвонить: +7 (909) 017-58-65</a>
+    <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX</button>
+    <button type="button" class="bs-opt" onclick="bookVia('tg')">✈️ Написать в Telegram</button>
+    <button type="button" class="bs-close" onclick="closeBook()">Отмена</button>
+  </div>
+</div>
 
 <div id="cookieNote" class="hidden" role="dialog" aria-label="Согласие на cookie">
   <span>Можно мы будем использовать cookie и Яндекс Метрику? Они помогают считать посещения и делать сайт удобнее. Калькулятор работает и без них. Нажимая «Принять», вы даёте <a href="consent.html" target="_blank">согласие на обработку данных</a> по <a href="privacy.html" target="_blank">политике</a>.</span>
@@ -588,6 +628,9 @@ const FMT_NAMES = { home:'Поздравление на дом', corp:'Корп�
 const PAIR_NAMES = { p1:'Пара 1', p2:'Пара 2' };
 // Чат для брони
 const TG_LINK = 'https://t.me/marsssellin';
+// Профиль в MAX: Настройки → «Пригласить друзей» → «Скопировать ссылку» (вид https://max.ru/u/...).
+// Пока пусто, кнопка MAX открывает поиск по номеру: пользователь находит контакт сам.
+const MAX_LINK = '';
 // Откуда пришёл клиент: метка utm_source в ссылке рекламы (Директ, Авито, ВК, ТВ)
 const UTM_NAMES = { yandex: 'Яндекс', avito: 'Авито', vk: 'ВКонтакте', tv: 'ТВ-конкурс', tg: 'Telegram' };
 const FROM = (() => {
@@ -776,7 +819,7 @@ function calc() {
   sbMain.className = 'sb-price';
   sbMain.textContent = pref + rub(total);
   sbBtn.className = 'sb-btn';
-  sbBtn.textContent = '✈️ Забронировать';
+  sbBtn.textContent = 'Забронировать';
   if (!S.priceShown) { S.priceShown = true; goal('price_shown'); track('price_shown'); }
 
   S.message = [
@@ -793,18 +836,36 @@ function calc() {
 
 /* ─── Booking ───────────────────────────────────────────────────── */
 function onBarBtn() {
-  if (S.ready) { bookTg(); return; }
+  if (S.ready) { openBook(); return; }
   const target = !S.pair ? 's1' : !S.fmt ? 's2' : 's3';
   document.getElementById(target).scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function bookTg() {
+function openBook() {
   if (!S.ready) return;
   goal('book_click');
   track('book_click');
   try { navigator.clipboard.writeText(S.message).catch(() => {}); } catch (e) {}
-  window.open(TG_LINK + '?text=' + encodeURIComponent(S.message), '_blank');
-  showToast('Текст заявки скопирован — если чат открылся пустым, просто вставьте его');
+  document.getElementById('bookSheet').classList.add('open');
+}
+function closeBook() {
+  document.getElementById('bookSheet').classList.remove('open');
+}
+// Выбор канала: отдельная цель на каждый, чтобы видеть, куда реально пишут
+function bookVia(ch) {
+  goal('book_' + ch);
+  track('book_' + ch);
+  if (ch === 'tg') {
+    window.open(TG_LINK + '?text=' + encodeURIComponent(S.message), '_blank');
+    showToast('Текст заявки скопирован. Если чат открылся пустым, просто вставьте его');
+  } else if (ch === 'max') {
+    window.open(MAX_LINK || 'https://max.ru/', '_blank');
+    showToast(MAX_LINK
+      ? 'Текст заявки скопирован, вставьте его в чат'
+      : 'Найдите в MAX номер +7 909 017-58-65 и вставьте скопированный текст заявки');
+  }
+  // ch === 'call': ссылка tel: сама открывает набор номера
+  closeBook();
 }
 
 /* ─── Cookie notice ─────────────────────────────────────────────── */
@@ -842,7 +903,7 @@ function openPhoto(e, src) {
 function closePhoto() {
   document.getElementById('lightbox').classList.remove('open');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePhoto(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePhoto(); closeBook(); } });
 
 /* ─── Snow ──────────────────────────────────────────────────────── */
 const chars = ['❄','❅','❆','✦','·'];
