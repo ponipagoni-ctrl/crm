@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>КП — Дед Мороз и Снегурочка на корпоратив</title>
+<!--
+  Исходник КП для компаний. PDF собирается скриптом marketing/kp/build-kp.js
+  в calculator/kp.pdf (его отдаёт форма «Получить КП» на калькуляторе).
+  Цены взяты из калькулятора (calculator/index.html, объект P) — при смене
+  цен там поправить и здесь, затем пересобрать PDF.
+-->
+<style>
+  @page { size: A4; margin: 0; }
+  :root {
+    --ink:#1b1d2a; --muted:#5b6075; --line:#e5e1d8;
+    --red:#a3182b; --red-soft:#f7e9eb; --gold:#b8862b; --cream:#fbf8f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #fff; }
+  body { font-family: "Inter", "DejaVu Sans", sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.45; }
+  .page { width: 210mm; height: 297mm; padding: 16mm 16mm 14mm; position: relative; overflow: hidden; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+
+  .kicker { font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--red); font-weight: 700; }
+  h1 { font-size: 27pt; line-height: 1.08; margin: 3mm 0 3mm; font-weight: 800; letter-spacing: -.01em; }
+  h1 span { color: var(--red); }
+  .lead { font-size: 11.5pt; color: var(--muted); max-width: 150mm; }
+  h2 { font-size: 14pt; margin: 0 0 3mm; font-weight: 800; }
+  h2 small { font-size: 9pt; font-weight: 500; color: var(--muted); margin-left: 2mm; }
+
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin: 7mm 0 6mm; }
+  .photo { border-radius: 4mm; overflow: hidden; background: var(--cream); }
+  .photo img { width: 100%; height: 86mm; object-fit: cover; object-position: center 22%; display: block; }
+  .photo div { padding: 2.5mm 4mm 3mm; font-size: 9.5pt; }
+  .photo b { display: block; font-size: 10.5pt; }
+
+  .why { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 7mm; }
+  .why div { background: var(--cream); border-radius: 3mm; padding: 3.5mm 3.5mm 3mm; font-size: 9pt; color: var(--muted); }
+  .why b { display: block; color: var(--ink); font-size: 13pt; line-height: 1.15; margin-bottom: 1mm; }
+
+  .formats { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .fmt { border: 1px solid var(--line); border-radius: 4mm; padding: 5mm; }
+  .fmt .tag { display: inline-block; font-size: 8pt; font-weight: 700; color: var(--red); background: var(--red-soft); border-radius: 10mm; padding: .8mm 3mm; margin-bottom: 2.5mm; }
+  .fmt h3 { font-size: 12.5pt; margin-bottom: 2mm; }
+  .fmt p { font-size: 9.5pt; color: var(--muted); }
+  .fmt .meta { margin-top: 2.5mm; font-size: 9pt; color: var(--ink); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 6mm; }
+  th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 2mm 3mm; border-bottom: 2px solid var(--ink); }
+  th.num, td.num { text-align: right; white-space: nowrap; }
+  td { padding: 2.3mm 3mm; border-bottom: 1px solid var(--line); }
+  tr.hot td { background: var(--red-soft); }
+  td small { color: var(--muted); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .box { background: var(--cream); border-radius: 4mm; padding: 5mm; }
+  .box ul { list-style: none; }
+  .box li { padding-left: 5mm; position: relative; margin-bottom: 1.6mm; font-size: 9.8pt; }
+  .box li::before { content: "✦"; position: absolute; left: 0; color: var(--gold); font-size: 8pt; top: .6mm; }
+  ol.steps { list-style: none; counter-reset: s; }
+  ol.steps li { counter-increment: s; padding-left: 8mm; position: relative; margin-bottom: 2.2mm; font-size: 9.8pt; }
+  ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 5.5mm; height: 5.5mm; border-radius: 50%; background: var(--red); color: #fff; font-size: 8pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  .contact { margin-top: 7mm; background: var(--ink); color: #fff; border-radius: 4mm; padding: 6mm 7mm; display: grid; grid-template-columns: 1.2fr 1fr; gap: 6mm; align-items: center; }
+  .contact .big { font-size: 17pt; font-weight: 800; line-height: 1.15; }
+  .contact .big span { color: #f2c46d; }
+  .contact .lines { font-size: 10.5pt; line-height: 1.75; }
+  .contact .lines b { color: #f2c46d; font-weight: 600; }
+  .foot { position: absolute; left: 16mm; right: 16mm; bottom: 8mm; font-size: 7.8pt; color: var(--muted); display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- ─────────────── Страница 1 ─────────────── -->
+<section class="page">
+  <div class="kicker">Коммерческое предложение · Новый год 2026/27 · Екатеринбург</div>
+  <h1>Дед Мороз и Снегурочка<br><span>на ваш корпоратив</span></h1>
+  <p class="lead">Живая программа для коллектива и отдельный праздник для детей сотрудников. Приезжаем в офис, ресторан или на вашу площадку в Екатеринбурге и до 50 км от города.</p>
+
+  <div class="photos">
+    <div class="photo">
+      <img src="../../calculator/photos/pair1.jpg" alt="">
+      <div><b>Пара 1</b>Классические костюмы</div>
+    </div>
+    <div class="photo">
+      <img src="../../calculator/photos/pair2.jpg" alt="">
+      <div><b>Пара 2</b>Премиум-костюмы, самый опытный Дед Мороз команды</div>
+    </div>
+  </div>
+
+  <div class="why">
+    <div><b>10+ лет</b>в образе Деда Мороза</div>
+    <div><b>~25</b>корпоративов за прошлый сезон</div>
+    <div><b>Свои</b>костюмы, а не прокат</div>
+    <div><b>Под вас</b>программа подстраивается под коллектив</div>
+  </div>
+
+  <div class="formats">
+    <div class="fmt">
+      <span class="tag">Для взрослых</span>
+      <h3>Поздравление коллектива</h3>
+      <p>Современная живая программа: командные игры, танцы, хоровод, поздравление сотрудников. Дед Мороз и Снегурочка быстро находят общий язык с любым коллективом и задают настроение всему вечеру.</p>
+      <div class="meta">30 минут · 2 персонажа</div>
+    </div>
+    <div class="fmt">
+      <span class="tag">Для детей сотрудников</span>
+      <h3>Новогодняя ёлка в компании</h3>
+      <p>Праздник для детей ваших сотрудников: Дед Мороз, Снегурочка и Гринч (или ростовая кукла), программа «Зимние причуды» с хороводом, танцами и командными играми, общее фото.</p>
+      <div class="meta">40 минут · 3 персонажа · группы от 10 детей</div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Дед Мороз и Снегурочка · dedmoroz96.ru</span><span>1 / 2</span></div>
+</section>
+
+<!-- ─────────────── Страница 2 ─────────────── -->
+<section class="page">
+  <h2>Стоимость <small>цена за выступление, Пара 1 / Пара 2</small></h2>
+  <table>
+    <tr><th>Дата</th><th class="num">Поздравление коллектива<br><small>30 мин · 2 персонажа</small></th><th class="num">Ёлка для детей<br><small>40 мин · 3 персонажа</small></th></tr>
+    <tr><td>1–27 декабря</td><td class="num">18 000 / 30 000 ₽</td><td class="num">28 000 / 56 000 ₽</td></tr>
+    <tr><td>28–30 декабря</td><td class="num">22 000 / 36 000 ₽</td><td class="num">32 000 / 64 000 ₽</td></tr>
+    <tr class="hot"><td>31 декабря, до 16:00</td><td class="num">28 000 / 42 000 ₽</td><td class="num">38 000 / 75 000 ₽</td></tr>
+    <tr class="hot"><td>31 декабря, 16:00–22:00</td><td class="num">33 000 / 50 000 ₽</td><td class="num">45 000 / 90 000 ₽</td></tr>
+    <tr class="hot"><td>31 декабря, после 22:00</td><td class="num">40 000 / 60 000 ₽</td><td class="num">55 000 / 108 000 ₽</td></tr>
+    <tr><td>1–10 января</td><td class="num">18 000 / 30 000 ₽</td><td class="num">28 000 / 56 000 ₽</td></tr>
+  </table>
+
+  <div class="two">
+    <div class="box">
+      <h2 style="font-size:12pt">Выезд</h2>
+      <ul>
+        <li>По Екатеринбургу — без доплаты</li>
+        <li>До 20 км от города — +2 000 ₽</li>
+        <li>20–35 км — +3 000 ₽</li>
+        <li>35–50 км — +5 000 ₽</li>
+      </ul>
+      <p style="font-size:9pt;color:var(--muted);margin-top:2mm">Точную цену на вашу дату и площадку можно посчитать за минуту на сайте <b style="color:var(--ink)">dedmoroz96.ru</b></p>
+    </div>
+    <div class="box">
+      <h2 style="font-size:12pt">Как заказать</h2>
+      <ol class="steps">
+        <li>Напишите или позвоните: дата, время, площадка, сколько гостей.</li>
+        <li>Обсудим программу: особенности коллектива, кого поздравить отдельно, подарки.</li>
+        <li>Закрепим дату за вами — лучшие даты декабря разбирают заранее.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="contact">
+    <div class="big">Забронируйте Деда Мороза для&nbsp;вашей компании <span>заранее</span></div>
+    <div class="lines">
+      Владислав<br>
+      <b>+7 (909) 017-58-65</b><br>
+      Telegram <b>@marsssellin</b><br>
+      Сайт <b>dedmoroz96.ru</b>
+    </div>
+  </div>
+
+  <p style="margin-top:5mm;font-size:8.5pt;color:var(--muted)">Исполнитель: Макеев Владислав Владимирович, самозанятый (плательщик НПД), ИНН 667020710197.</p>
+
+  <div class="foot"><span>Дед Мороз и Снегурочка · dedmoroz96.ru</span><span>2 / 2</span></div>
+</section>
+
+</body>
+</html>

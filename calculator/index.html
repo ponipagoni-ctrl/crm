@@ -219,6 +219,27 @@ header p { color: var(--text-muted); font-size: 1em; }
 .bs-close { background: none; border: none; color: var(--text-muted); font-size: .9em; padding: 8px; cursor: pointer; }
 @media (min-width: 541px) { #bookSheet { align-items: center; } }
 
+/* ── Форма «Получить КП для компании» ── */
+#kpSheet { position: fixed; inset: 0; z-index: 12; background: rgba(0,0,0,.7);
+  display: none; align-items: flex-end; justify-content: center; padding: 16px; }
+#kpSheet.open { display: flex; }
+@media (min-width: 541px) { #kpSheet { align-items: center; } }
+.kp-form { text-align: left; }
+.kp-form label.f { display: block; font-size: .82em; color: var(--text-muted); margin: 0 0 4px; }
+.kp-form input[type=text], .kp-form input[type=tel] {
+  width: 100%; padding: 12px 14px; margin-bottom: 10px; border-radius: 12px;
+  border: 1px solid var(--card-border); background: var(--card-bg); color: var(--white); font-size: 1em; }
+.kp-form input:focus { outline: none; border-color: var(--gold); }
+.kp-consent { display: flex; gap: 8px; align-items: flex-start; font-size: .78em; color: var(--text-muted); margin: 4px 0 12px; line-height: 1.4; }
+.kp-consent input { margin-top: 2px; accent-color: var(--gold); }
+.kp-consent a { color: var(--gold); }
+.kp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.kp-err { color: #ff8a8a; font-size: .82em; margin: -4px 0 10px; display: none; }
+.kp-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 16px;
+  border-radius: 12px; border: 1px solid var(--gold); background: transparent; color: var(--gold);
+  font-weight: 700; font-size: .95em; cursor: pointer; }
+.kp-btn:hover { background: var(--gold); color: var(--blue-deep); }
+
 /* ── Toast ── */
 #toast {
   position: fixed; left: 50%; bottom: 96px; z-index: 6;
@@ -567,6 +588,34 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
   </div>
 </div>
 
+<div id="kpSheet" role="dialog" aria-modal="true" aria-labelledby="kpTitle" onclick="if (event.target === this) closeKp()">
+  <div class="bs-card">
+    <div id="kpFormWrap">
+      <div class="bs-title" id="kpTitle">КП для вашей компании</div>
+      <div class="bs-sub">Цены, форматы и условия в PDF. Оставьте контакт — КП откроется сразу, а Владислав сможет уточнить детали.</div>
+      <form class="kp-form" onsubmit="submitKp(event)" novalidate>
+        <label class="f" for="kpName">Ваше имя *</label>
+        <input type="text" id="kpName" maxlength="60" autocomplete="name" required>
+        <label class="f" for="kpPhone">Телефон *</label>
+        <input type="tel" id="kpPhone" maxlength="30" autocomplete="tel" placeholder="+7 ___ ___-__-__" required>
+        <label class="f" for="kpCompany">Компания (по желанию)</label>
+        <input type="text" id="kpCompany" maxlength="100" autocomplete="organization">
+        <input type="text" id="kpWebsite" class="kp-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <label class="kp-consent"><input type="checkbox" id="kpConsent" onchange="kpError('')">
+          <span>Даю <a href="kp-consent.html" target="_blank">согласие на обработку персональных данных</a> по <a href="privacy.html" target="_blank">политике</a></span></label>
+        <div class="kp-err" id="kpErr"></div>
+        <button type="submit" class="bs-opt main" id="kpSubmit">📄 Получить КП</button>
+      </form>
+    </div>
+    <div id="kpDone" style="display:none">
+      <div class="bs-title">Готово!</div>
+      <div class="bs-sub" id="kpDoneText">Откройте КП по кнопке ниже. Владислав свяжется с вами, если понадобится уточнить детали.</div>
+      <a class="bs-opt main" href="kp.pdf" target="_blank" rel="noopener" onclick="goal('kp_open')">📄 Открыть КП (PDF)</a>
+    </div>
+    <button type="button" class="bs-close" onclick="closeKp()">Закрыть</button>
+  </div>
+</div>
+
 <div id="cookieNote" class="hidden" role="dialog" aria-label="Согласие на cookie">
   <span>Можно мы будем использовать cookie и Яндекс Метрику? Они помогают считать посещения и делать сайт удобнее. Калькулятор работает и без них. Нажимая «Принять», вы даёте <a href="consent.html" target="_blank">согласие на обработку данных</a> по <a href="privacy.html" target="_blank">политике</a>.</span>
   <div class="cookie-btns">
@@ -715,7 +764,8 @@ function pickFormat(f, el) {
   selectIn('.fmt-btn', el);
   goal('format_selected');
   const panel = document.getElementById('fmtDescPanel');
-  panel.innerHTML = FMT_DESC[f];
+  panel.innerHTML = FMT_DESC[f] + (f === 'corp' || f === 'mass'
+    ? '<br><button type="button" class="kp-btn" onclick="openKp()">📄 Получить КП для компании</button>' : '');
   panel.style.display = 'block';
   updateHints();
   calc();
@@ -865,6 +915,51 @@ function bookVia(ch) {
   }
   // ch === 'call': ссылка tel: сама открывает набор номера
   closeBook();
+}
+
+/* ─── Форма «Получить КП для компании» ──────────────────────────────
+   Контакт уходит на наш хостинг в России (kp.php → файл заявок), Владиславу
+   приходит уведомление в Telegram без имени и телефона, посетитель сразу
+   получает kp.pdf. Абсолютный адрес — чтобы форма работала и с копии на GitHub. */
+const KP_URL = 'https://dedmoroz96.ru/kp.php';
+function openKp() {
+  goal('kp_open_form');
+  document.getElementById('kpSheet').classList.add('open');
+  setTimeout(() => document.getElementById('kpName').focus(), 50);
+}
+function closeKp() { document.getElementById('kpSheet').classList.remove('open'); }
+function kpError(t) { const e = document.getElementById('kpErr'); e.textContent = t; e.style.display = t ? 'block' : 'none'; }
+function kpDone(text) {
+  document.getElementById('kpFormWrap').style.display = 'none';
+  if (text) document.getElementById('kpDoneText').textContent = text;
+  document.getElementById('kpDone').style.display = 'block';
+}
+async function submitKp(e) {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value.trim();
+  const name = v('kpName'), phone = v('kpPhone');
+  const digits = phone.replace(/\D/g, '');
+  if (!name) return kpError('Укажите, как к вам обращаться');
+  if (digits.length < 10 || digits.length > 15) return kpError('Проверьте номер телефона');
+  if (!document.getElementById('kpConsent').checked) return kpError('Нужно согласие на обработку данных');
+  kpError('');
+  const btn = document.getElementById('kpSubmit');
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  const body = {
+    name, phone, company: v('kpCompany'), website: v('kpWebsite'), consent: true,
+    fmt: S.fmt || '', pair: S.pair || '', period: S.period || '', total: Math.round(S.total || 0), from: FROM || ''
+  };
+  try {
+    const r = await fetch(KP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(r.status);
+    goal('kp_request');
+    track('kp_request');
+    kpDone();
+  } catch (err) {
+    // КП отдаём в любом случае, но просим написать самим — заявка могла не дойти
+    goal('kp_request_failed');
+    kpDone('КП можно открыть по кнопке ниже. Контакт отправить не получилось — напишите, пожалуйста, в Telegram @marsssellin или позвоните +7 (909) 017-58-65.');
+  }
 }
 
 /* ─── Cookie notice ─────────────────────────────────────────────── */

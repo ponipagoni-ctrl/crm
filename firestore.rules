@@ -50,7 +50,7 @@ service cloud.firestore {
       allow update: if false;
       allow create: if request.resource.data.keys().hasOnly(
             ['type','pair','fmt','period','slot','zone','total','from','visit','at'])
-        && request.resource.data.type in ['price_shown', 'book_click']
+        && request.resource.data.type in ['price_shown', 'book_click', 'book_call', 'book_max', 'book_tg', 'kp_request']
         && request.resource.data.pair is string   && request.resource.data.pair.size() <= 40
         && request.resource.data.fmt is string    && request.resource.data.fmt.size() <= 40
         && request.resource.data.period is string && request.resource.data.period.size() <= 40

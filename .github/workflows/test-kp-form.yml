@@ -1,0 +1,26 @@
+name: Test KP form on dedmoroz96.ru
+
+# Ручная проверка формы «Получить КП»: отправляет ТЕСТОВУЮ заявку на живой
+# сайт и показывает ответ kp.php (сохранилась ли и ушло ли уведомление в
+# Telegram). В Telegram такое сообщение помечено «🧪 ТЕСТ», на странице
+# заявок — меткой «тест». Запуск: Actions → Test KP form → Run workflow.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: kp.pdf is served
+        run: curl -sS -o /dev/null -w "kp.pdf → %{http_code}, %{size_download} байт, %{content_type}\n" https://dedmoroz96.ru/kp.pdf
+
+      - name: Send test lead
+        run: |
+          curl -sS -i -X POST https://dedmoroz96.ru/kp.php \
+            -H 'Origin: https://dedmoroz96.ru' -H 'Content-Type: application/json' \
+            --data '{"name":"ТЕСТ (проверка формы)","phone":"+7 000 000-00-00","company":"тест","consent":true,"test":true,"fmt":"corp","pair":"p1","period":"t2","total":18000,"from":"проверка"}' \
+            | grep -iE '^HTTP|^access-control-allow-origin|^\{'

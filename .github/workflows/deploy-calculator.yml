@@ -33,6 +33,7 @@ jobs:
       FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
       LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       FTP_DIR: ${{ vars.FTP_DIR || 'www/dedmoroz96.ru' }}
+      TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
     steps:
       - name: Check hosting secrets
         id: cfg
@@ -64,3 +65,26 @@ jobs:
             mkdir -p -f \"$FTP_DIR\";
             mirror -R --verbose --no-perms calculator/ \"$FTP_DIR\";
           "
+
+      - name: Upload KP form config (Telegram bot token) outside the web root
+        if: steps.cfg.outputs.ready == 'true' && env.TG_BOT_TOKEN != ''
+        run: |
+          # Конфиг для kp.php: токен бота и ключ закрытой страницы заявок.
+          # Ключ стабильно выводится из токена, чтобы ссылки в Telegram не ломались.
+          umask 077
+          KEY=$(printf '%s|kp-leads' "$TG_BOT_TOKEN" | sha256sum | cut -c1-24)
+          # токен бота имеет вид 123456:ABC-def_… — другие символы не пропускаем
+          if ! printf '%s' "$TG_BOT_TOKEN" | grep -Eq '^[0-9]+:[A-Za-z0-9_-]+$'; then
+            echo "TG_BOT_TOKEN выглядит неправильно — проверь секрет"; exit 1
+          fi
+          printf "<?php\nreturn ['tg_token' => '%s', 'view_key' => '%s'];\n" "$TG_BOT_TOKEN" "$KEY" > kp-config.php
+          lftp -c "
+            set net:max-retries 3; set net:timeout 30;
+            set ftp:ssl-allow yes; set ssl:verify-certificate no;
+            set sftp:auto-confirm yes;
+            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\";
+            mkdir -p -f private;
+            put -O private kp-config.php;
+          "
+          rm -f kp-config.php
+          echo "Конфиг формы КП выложен в private/kp-config.php"
