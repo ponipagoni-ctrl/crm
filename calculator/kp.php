@@ -52,15 +52,19 @@ function config(): array {
     $c = is_file($f) ? include $f : [];
     return is_array($c) ? $c : [];
 }
+$TG_ERR = '';
 function tg(string $token, string $method, array $params): ?array {
+    global $TG_ERR;
     $ch = curl_init("https://api.telegram.org/bot{$token}/{$method}");
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($params),
         CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 4,
     ]);
     $res = curl_exec($ch);
+    if ($res === false) { $TG_ERR = 'curl: ' . curl_error($ch); }
     curl_close($ch);
     $j = is_string($res) ? json_decode($res, true) : null;
+    if (is_array($j) && empty($j['ok'])) { $TG_ERR = $method . ': ' . (string)($j['description'] ?? 'error'); }
     return is_array($j) ? $j : null;
 }
 /* chat_id Владислава: берём из кэша, иначе ищем в последних сообщениях боту
@@ -134,8 +138,10 @@ flock($fp, LOCK_UN); fclose($fp);
 $cfg = config();
 $token = (string)($cfg['tg_token'] ?? '');
 $notified = false;
+$tgStatus = $token === '' ? 'no_token' : '';
 if ($token !== '') {
     $chat = tg_chat($token);
+    if ($chat === '' && $TG_ERR === '') { $tgStatus = 'no_chat (нажми Start у бота с @' . OWNER_TG_USERNAME . ')'; }
     if ($chat !== '') {
         $fmtName = ['corp' => 'Корпоратив', 'mass' => 'Массовый праздник / ёлка', 'home' => 'На дом'][$fmt] ?? 'не выбран';
         $perName = ['t2' => '1–27 декабря', 't3' => '28–30 декабря', 'd31' => '31 декабря', 'jan' => '1–10 января'][$period] ?? 'дата не выбрана';
@@ -148,4 +154,7 @@ if ($token !== '') {
     }
 }
 
-out(200, ['ok' => true, 'id' => $id, 'notified' => $notified]);
+$resp = ['ok' => true, 'id' => $id, 'notified' => $notified];
+// причина отказа уведомления — только для тестовых заявок
+if ($test) { $resp['tg'] = $notified ? 'sent' : ($TG_ERR !== '' ? $TG_ERR : $tgStatus); }
+out(200, $resp);

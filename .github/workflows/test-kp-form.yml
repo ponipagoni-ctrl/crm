@@ -18,6 +18,26 @@ jobs:
       - name: kp.pdf is served
         run: curl -sS -o /dev/null -w "kp.pdf → %{http_code}, %{size_download} байт, %{content_type}\n" https://dedmoroz96.ru/kp.pdf
 
+      - name: Telegram bot status (from GitHub)
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        run: |
+          if [ -z "$TG_BOT_TOKEN" ]; then echo "Секрет TG_BOT_TOKEN не задан"; exit 0; fi
+          echo "== getMe (бот):"
+          curl -sS "https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get('ok'), d.get('result',{}).get('username'), d.get('description',''))"
+          echo "== кто писал боту (последние сообщения):"
+          curl -sS "https://api.telegram.org/bot${TG_BOT_TOKEN}/getUpdates?limit=100" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          if not d.get('ok'): print('ошибка:', d.get('description')); sys.exit()
+          seen=set()
+          for u in d['result']:
+              m=u.get('message') or {}
+              who='@'+str((m.get('from') or {}).get('username')); t=(m.get('chat') or {}).get('type')
+              if (who,t) not in seen: seen.add((who,t)); print(who, t, repr((m.get('text') or '')[:20]))
+          print('всего обновлений:', len(d['result']))
+          "
+
       - name: Send test lead
         run: |
           curl -sS -i -X POST https://dedmoroz96.ru/kp.php \
