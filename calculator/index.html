@@ -128,7 +128,20 @@ header p { color: var(--text-muted); font-size: 1em; }
   padding: 16px; cursor: zoom-out;
 }
 #lightbox.open { display: flex; }
-#lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+#lightbox img, #lightbox video { max-width: 100%; max-height: 100%; border-radius: 10px; }
+#lightbox video { display: none; background: #000; cursor: default; }
+.zoom-btn.left { right: auto; left: 8px; }
+.lb-nav, .lb-close {
+  position: absolute; z-index: 1; border: none; cursor: pointer;
+  background: rgba(7,24,40,.7); color: var(--white); border-radius: 50%;
+  width: 44px; height: 44px; font-size: 26px; line-height: 44px; padding: 0;
+}
+.lb-nav { top: 50%; transform: translateY(-50%); }
+.lb-prev { left: 10px; } .lb-next { right: 10px; }
+.lb-close { top: 12px; right: 12px; font-size: 20px; }
+.lb-nav:hover, .lb-close:hover { color: var(--gold); background: rgba(7,24,40,.95); }
+.lb-count { position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(7,24,40,.7); border-radius: 12px; padding: 3px 10px; font-size: .8em; }
 .pair-title { font-weight: 700; font-size: .9em; margin-bottom: 3px; }
 .pair-desc { font-size: .8em; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4; }
 .pair-sub { font-size: .78em; color: var(--text-muted); margin-bottom: 8px; }
@@ -445,7 +458,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
       <div class="pair-card" onclick="pickPair('p1',this)" data-tier="standard">
         <div class="pair-photo">
           <img src="photos/pair1.jpg" alt="Пара 1 — Дед Мороз и Снегурочка в костюмах">
-          <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair1.jpg')">🔍 Увеличить</button>
+          <button type="button" class="zoom-btn" data-gallery="p1" onclick="openGallery(event,'p1')">📷 Фото</button>
         </div>
         <div class="pair-title">Пара 1</div>
         <div class="pair-desc">Классические костюмы</div>
@@ -455,7 +468,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
       <div class="pair-card" onclick="pickPair('p2',this)" data-tier="vip">
         <div class="pair-photo">
           <img src="photos/pair2.jpg?v=3" alt="Пара 2 — Дед Мороз и Снегурочка в костюмах">
-          <button type="button" class="zoom-btn" onclick="openPhoto(event,'photos/pair2.jpg?v=3')">🔍 Увеличить</button>
+          <button type="button" class="zoom-btn" data-gallery="p2" onclick="openGallery(event,'p2')">🔍 Увеличить</button>
         </div>
         <div class="pair-title">Пара 2</div>
         <div class="pair-desc">Премиум-костюмы · Дед Мороз с 15-летним опытом</div>
@@ -563,7 +576,14 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
 
 </div><!-- /wrap -->
 
-<div id="lightbox" onclick="closePhoto()"><img id="lightboxImg" alt="Костюмы пары"></div>
+<div id="lightbox" onclick="closePhoto()" role="dialog" aria-modal="true" aria-label="Фото и видео костюмов">
+  <button type="button" class="lb-close" aria-label="Закрыть" onclick="closePhoto()">✕</button>
+  <button type="button" class="lb-nav lb-prev" aria-label="Предыдущее фото" onclick="event.stopPropagation(); galleryStep(-1)">‹</button>
+  <img id="lightboxImg" alt="Костюмы пары" onclick="event.stopPropagation(); galleryStep(1)">
+  <video id="lightboxVideo" controls playsinline preload="none" onclick="event.stopPropagation()"></video>
+  <button type="button" class="lb-nav lb-next" aria-label="Следующее фото" onclick="event.stopPropagation(); galleryStep(1)">›</button>
+  <div class="lb-count" id="lbCount"></div>
+</div>
 
 <!-- Sticky price bar -->
 <div id="stickyBar">
@@ -988,16 +1008,89 @@ function showToast(text) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
 }
 
-/* ─── Photo lightbox ────────────────────────────────────────────── */
-function openPhoto(e, src) {
-  e.stopPropagation(); // не выбирать пару при нажатии «Увеличить»
-  document.getElementById('lightboxImg').src = src;
-  document.getElementById('lightbox').classList.add('open');
+/* ─── Фото и видео костюмов ─────────────────────────────────────────
+   Чтобы добавить фото — положите файл в calculator/photos/ и допишите его
+   в список. Видео Пары 2 — файл calculator/video/…, путь в поле video
+   (кнопка «▶ Видео костюмов» появится на карточке сама). */
+const PAIR_MEDIA = {
+  p1: { photos: ['photos/pair1.jpg', 'photos/pair1-2.jpg', 'photos/pair1-3.jpg', 'photos/pair1-4.jpg'] },
+  p2: { photos: ['photos/pair2.jpg?v=3'], video: 'video/pair2.mp4', webm: 'video/pair2.webm', poster: 'video/pair2-poster.jpg' }
+};
+const GAL = { list: [], i: 0 };
+const lbEl = id => document.getElementById(id);
+function openGallery(e, pair, start = 0) {
+  e.stopPropagation(); // не выбирать пару при нажатии на кнопку
+  GAL.list = PAIR_MEDIA[pair].photos; GAL.i = start;
+  lbEl('lightboxVideo').style.display = 'none';
+  lbEl('lightboxImg').style.display = 'block';
+  showGallery();
+  lbEl('lightbox').classList.add('open');
+  goal('photos_open_' + pair);
+}
+function showGallery() {
+  const n = GAL.list.length;
+  lbEl('lightboxImg').src = GAL.list[GAL.i];
+  lbEl('lbCount').textContent = n > 1 ? (GAL.i + 1) + ' / ' + n : '';
+  lbEl('lbCount').style.display = n > 1 ? 'block' : 'none';
+  document.querySelectorAll('.lb-nav').forEach(b => b.style.display = n > 1 ? 'block' : 'none');
+  if (n > 1) new Image().src = GAL.list[(GAL.i + 1) % n]; // подгрузить следующее заранее
+}
+function galleryStep(d) {
+  const n = GAL.list.length;
+  if (n < 2) return;
+  GAL.i = (GAL.i + d + n) % n;
+  showGallery();
+}
+function openVideo(e, pair) {
+  e.stopPropagation();
+  const v = lbEl('lightboxVideo');
+  GAL.list = [];
+  lbEl('lightboxImg').style.display = 'none';
+  lbEl('lbCount').style.display = 'none';
+  document.querySelectorAll('.lb-nav').forEach(b => b.style.display = 'none');
+  v.poster = PAIR_MEDIA[pair].poster || '';
+  const m = PAIR_MEDIA[pair];
+  // H.264 (mp4) играют Safari/Chrome/Яндекс; иначе — запасной WebM
+  v.src = (!m.webm || v.canPlayType('video/mp4; codecs="avc1.640028"')) ? m.video : m.webm;
+  v.style.display = 'block';
+  lbEl('lightbox').classList.add('open');
+  v.play().catch(() => {});
+  goal('video_open_' + pair);
 }
 function closePhoto() {
-  document.getElementById('lightbox').classList.remove('open');
+  const v = lbEl('lightboxVideo');
+  v.pause(); v.removeAttribute('src'); v.load();
+  lbEl('lightbox').classList.remove('open');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePhoto(); closeBook(); } });
+// подписи кнопок: «📷 Фото (4)»; кнопка видео — только если файл указан
+document.querySelectorAll('[data-gallery]').forEach(btn => {
+  const m = PAIR_MEDIA[btn.dataset.gallery];
+  if (m.photos.length > 1) btn.textContent = '📷 Фото (' + m.photos.length + ')';
+  if (m.video) {
+    const vb = document.createElement('button');
+    vb.type = 'button'; vb.className = 'zoom-btn left'; vb.textContent = '▶ Видео костюмов';
+    vb.onclick = ev => openVideo(ev, btn.dataset.gallery);
+    btn.parentNode.appendChild(vb);
+  }
+});
+// свайп по фото на телефоне
+(() => {
+  let x0 = null;
+  const lb = lbEl('lightbox');
+  lb.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    if (x0 === null || !GAL.list.length) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 40) galleryStep(dx < 0 ? 1 : -1);
+  });
+})();
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePhoto(); closeBook(); if (typeof closeKp === 'function') closeKp(); }
+  if (lbEl('lightbox').classList.contains('open') && GAL.list.length) {
+    if (e.key === 'ArrowRight') galleryStep(1);
+    if (e.key === 'ArrowLeft') galleryStep(-1);
+  }
+});
 
 /* ─── Snow ──────────────────────────────────────────────────────── */
 const chars = ['❄','❅','❆','✦','·'];
