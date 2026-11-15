@@ -26,6 +26,9 @@
   FORCE_DIGEST=1     — прислать сводку раз-в-3-дня прямо сейчас
   (запуск чаще раза в 14 минут только обрабатывает кнопки, без проверки источников)
   CRM_TEST=1         — записать в CRM тестовый лид (проверка связи)
+  SUGGEST_SOURCES=1  — предлагать в сводке новые группы/каналы с кнопками
+                       «Добавить / Не надо» (по умолчанию ВЫКЛЮЧЕНО: Влад
+                       попросил присылать только заявки)
 """
 import html
 import json
@@ -503,6 +506,13 @@ def digest(token, chat_id, st, stats, now):
     lines = [f"📊 Сводка за 3 дня ({since.astimezone(EKB):%d.%m}–{now.astimezone(EKB):%d.%m})", '',
              f"Заявок клиентов: {len(leads_3d)}"]
     lines += [f"  • {k}: {v}" for k, v in sorted(by_src.items(), key=lambda kv: -kv[1])]
+    if os.environ.get('SUGGEST_SOURCES') != '1':
+        # режим «только заявки»: короткая сводка без отчёта по источникам
+        # и без предложений новых групп/каналов
+        send(token, chat_id, '\n'.join(lines))
+        st['last_digest'] = now.isoformat()
+        print('сводка: только заявки (предложения источников выключены)')
+        return
     lines += ['', 'Источники сейчас:', source_report(stats, stats.get('new_leads', 0))]
     send(token, chat_id, '\n'.join(lines))
 
