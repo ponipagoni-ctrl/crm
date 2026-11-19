@@ -604,6 +604,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <a class="bs-opt main" href="tel:+79090175865" onclick="bookVia('call')">📞 Позвонить: +7 (909) 017-58-65</a>
     <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX</button>
     <button type="button" class="bs-opt" onclick="bookVia('tg')">✈️ Написать в Telegram</button>
+    <button type="button" class="bs-opt" onclick="closeBook(); openCallback()">📝 Оставить номер — перезвоню</button>
     <button type="button" class="bs-close" onclick="closeBook()">Отмена</button>
   </div>
 </div>
@@ -612,13 +613,13 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
   <div class="bs-card">
     <div id="kpFormWrap">
       <div class="bs-title" id="kpTitle">КП для вашей компании</div>
-      <div class="bs-sub">Цены, форматы и условия в PDF. Оставьте контакт — КП откроется сразу, а Владислав сможет уточнить детали.</div>
+      <div class="bs-sub" id="kpSub">Цены, форматы и условия в PDF. Оставьте контакт — КП откроется сразу, а Владислав сможет уточнить детали.</div>
       <form class="kp-form" onsubmit="submitKp(event)" novalidate>
         <label class="f" for="kpName">Ваше имя *</label>
         <input type="text" id="kpName" maxlength="60" autocomplete="name" required>
         <label class="f" for="kpPhone">Телефон *</label>
         <input type="tel" id="kpPhone" maxlength="30" autocomplete="tel" placeholder="+7 ___ ___-__-__" required>
-        <label class="f" for="kpCompany">Компания (по желанию)</label>
+        <label class="f" for="kpCompany" id="kpCompanyLbl">Компания (по желанию)</label>
         <input type="text" id="kpCompany" maxlength="100" autocomplete="organization">
         <input type="text" id="kpWebsite" class="kp-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
         <label class="kp-consent"><input type="checkbox" id="kpConsent" onchange="kpError('')">
@@ -630,7 +631,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <div id="kpDone" style="display:none">
       <div class="bs-title">Готово!</div>
       <div class="bs-sub" id="kpDoneText">Откройте КП по кнопке ниже. Владислав свяжется с вами, если понадобится уточнить детали.</div>
-      <a class="bs-opt main" href="kp.pdf" target="_blank" rel="noopener" onclick="goal('kp_open')">📄 Открыть КП (PDF)</a>
+      <a class="bs-opt main" id="kpPdf" href="kp.pdf" target="_blank" rel="noopener" onclick="goal('kp_open')">📄 Открыть КП (PDF)</a>
     </div>
     <button type="button" class="bs-close" onclick="closeKp()">Закрыть</button>
   </div>
@@ -942,16 +943,52 @@ function bookVia(ch) {
    приходит уведомление в Telegram без имени и телефона, посетитель сразу
    получает kp.pdf. Абсолютный адрес — чтобы форма работала и с копии на GitHub. */
 const KP_URL = 'https://dedmoroz96.ru/kp.php';
-function openKp() {
-  goal('kp_open_form');
-  document.getElementById('kpSheet').classList.add('open');
-  setTimeout(() => document.getElementById('kpName').focus(), 50);
+/* Та же форма работает в двух режимах:
+   'kp'   — «Получить КП для компании» (после отправки открывается PDF);
+   'call' — «Оставить номер — перезвоню» из окна бронирования. */
+let CF_MODE = 'kp';
+const CF_TEXT = {
+  kp: {
+    title: 'КП для вашей компании',
+    sub: 'Цены, форматы и условия в PDF. Оставьте контакт — КП откроется сразу, а Владислав сможет уточнить детали.',
+    extra: 'Компания (по желанию)', extraPh: '', extraAc: 'organization',
+    btn: '📄 Получить КП',
+    done: 'Откройте КП по кнопке ниже. Владислав свяжется с вами, если понадобится уточнить детали.',
+    fail: 'КП можно открыть по кнопке ниже. Контакт отправить не получилось — напишите, пожалуйста, в Telegram @marsssellin или позвоните +7 (909) 017-58-65.'
+  },
+  call: {
+    title: 'Перезвоню и всё расскажу',
+    sub: 'Оставьте имя и телефон — Владислав перезвонит, подтвердит свободную дату и ответит на вопросы. Ваш расчёт с сайта он увидит.',
+    extra: 'Когда удобно позвонить (по желанию)', extraPh: 'например, после 18:00', extraAc: 'off',
+    btn: '📞 Жду звонка',
+    done: 'Заявка у Владислава. Он перезвонит в ближайшее время (с 9 до 21 по Екатеринбургу).',
+    fail: 'Заявку отправить не получилось. Позвоните, пожалуйста, +7 (909) 017-58-65 или напишите в Telegram @marsssellin.'
+  }
+};
+function openContactForm(mode) {
+  CF_MODE = mode;
+  const t = CF_TEXT[mode], el = id => document.getElementById(id);
+  el('kpTitle').textContent = t.title;
+  el('kpSub').textContent = t.sub;
+  el('kpCompanyLbl').textContent = t.extra;
+  el('kpCompany').placeholder = t.extraPh;
+  el('kpCompany').setAttribute('autocomplete', t.extraAc);
+  el('kpCompany').value = '';
+  const btn = el('kpSubmit'); btn.disabled = false; btn.textContent = t.btn;
+  el('kpPdf').style.display = mode === 'kp' ? '' : 'none';
+  el('kpFormWrap').style.display = 'block';
+  el('kpDone').style.display = 'none';
+  kpError('');
+  el('kpSheet').classList.add('open');
+  setTimeout(() => el('kpName').focus(), 50);
 }
+function openKp() { goal('kp_open_form'); openContactForm('kp'); }
+function openCallback() { goal('callback_open_form'); openContactForm('call'); }
 function closeKp() { document.getElementById('kpSheet').classList.remove('open'); }
 function kpError(t) { const e = document.getElementById('kpErr'); e.textContent = t; e.style.display = t ? 'block' : 'none'; }
 function kpDone(text) {
   document.getElementById('kpFormWrap').style.display = 'none';
-  if (text) document.getElementById('kpDoneText').textContent = text;
+  document.getElementById('kpDoneText').textContent = text || CF_TEXT[CF_MODE].done;
   document.getElementById('kpDone').style.display = 'block';
 }
 async function submitKp(e) {
@@ -965,20 +1002,23 @@ async function submitKp(e) {
   kpError('');
   const btn = document.getElementById('kpSubmit');
   btn.disabled = true; btn.textContent = 'Отправляем…';
+  const call = CF_MODE === 'call';
   const body = {
-    name, phone, company: v('kpCompany'), website: v('kpWebsite'), consent: true,
+    kind: CF_MODE, name, phone, website: v('kpWebsite'), consent: true,
+    [call ? 'comment' : 'company']: v('kpCompany'),
     fmt: S.fmt || '', pair: S.pair || '', period: S.period || '', total: Math.round(S.total || 0), from: FROM || ''
   };
+  const g = call ? 'callback_request' : 'kp_request';
   try {
     const r = await fetch(KP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) throw new Error(r.status);
-    goal('kp_request');
-    track('kp_request');
+    goal(g);
+    track(call ? 'callback' : 'kp_request');
     kpDone();
   } catch (err) {
     // КП отдаём в любом случае, но просим написать самим — заявка могла не дойти
-    goal('kp_request_failed');
-    kpDone('КП можно открыть по кнопке ниже. Контакт отправить не получилось — напишите, пожалуйста, в Telegram @marsssellin или позвоните +7 (909) 017-58-65.');
+    goal(g + '_failed');
+    kpDone(CF_TEXT[CF_MODE].fail);
   }
 }
 

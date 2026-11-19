@@ -1,6 +1,8 @@
 <?php
 /*
- * Приём заявки «Получить КП для компании» с калькулятора (dedmoroz96.ru).
+ * Приём заявок с калькулятора (dedmoroz96.ru):
+ *   kind=kp   — «Получить КП для компании»;
+ *   kind=call — «Оставить номер — перезвоню» (из окна бронирования).
  *
  * Где что лежит на хостинге (LITE.HOST, сервер в России):
  *   www/dedmoroz96.ru/kp.php        — этот файл (выкладывается из calculator/)
@@ -93,6 +95,8 @@ if (!empty($in['website'])) { out(200, ['ok' => true]); } // ловушка дл
 $name    = clean($in['name'] ?? '', 60);
 $phone   = clean($in['phone'] ?? '', 30);
 $company = clean($in['company'] ?? '', 100);
+$kind    = ($in['kind'] ?? '') === 'call' ? 'call' : 'kp';
+$comment = clean($in['comment'] ?? '', 200);
 $digits  = preg_replace('/\D+/', '', $phone) ?? '';
 if ($name === '' || strlen($digits) < 10 || strlen($digits) > 15) { out(422, ['ok' => false, 'error' => 'invalid']); }
 if (($in['consent'] ?? false) !== true) { out(422, ['ok' => false, 'error' => 'consent']); }
@@ -129,8 +133,8 @@ $isNew = !is_file($csv);
 $fp = fopen($csv, 'a');
 if (!$fp) { out(500, ['ok' => false, 'error' => 'storage']); }
 flock($fp, LOCK_EX);
-if ($isNew) { fputcsv($fp, ['время', 'id', 'имя', 'телефон', 'компания', 'формат', 'пара', 'период', 'сумма', 'источник', 'тест']); }
-fputcsv($fp, [date('c'), $id, $name, $phone, $company, $fmt, $pair, $period, $total, $from, $test ? 'да' : '']);
+if ($isNew) { fputcsv($fp, ['время', 'id', 'имя', 'телефон', 'компания', 'формат', 'пара', 'период', 'сумма', 'источник', 'тест', 'тип', 'комментарий']); }
+fputcsv($fp, [date('c'), $id, $name, $phone, $company, $fmt, $pair, $period, $total, $from, $test ? 'да' : '', $kind, $comment]);
 flock($fp, LOCK_UN); fclose($fp);
 @chmod($csv, 0600);
 
@@ -145,7 +149,8 @@ if ($token !== '') {
     if ($chat !== '') {
         $fmtName = ['corp' => 'Корпоратив', 'mass' => 'Массовый праздник / ёлка', 'home' => 'На дом'][$fmt] ?? 'не выбран';
         $perName = ['t2' => '1–27 декабря', 't3' => '28–30 декабря', 'd31' => '31 декабря', 'jan' => '1–10 января'][$period] ?? 'дата не выбрана';
-        $text = ($test ? "🧪 ТЕСТ\n" : '') . "🎅 Новая заявка на КП\n"
+        $head = $kind === 'call' ? "📞 Просят перезвонить" : "🎅 Новая заявка на КП";
+        $text = ($test ? "🧪 ТЕСТ\n" : '') . $head . "\n"
               . "Формат: {$fmtName} · {$perName}" . ($total ? ' · ~' . number_format($total, 0, '', ' ') . ' ₽' : '') . "\n"
               . 'Источник: ' . ($from !== '' ? $from : 'не указан') . "\n\n"
               . 'Контакты: https://dedmoroz96.ru/kp-leads.php?k=' . urlencode((string)($cfg['view_key'] ?? ''));
