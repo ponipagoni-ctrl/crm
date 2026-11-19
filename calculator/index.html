@@ -604,7 +604,7 @@ try { if (localStorage.getItem('cookieConsent') === 'yes') loadMetrika(); } catc
     <a class="bs-opt main" href="tel:+79090175865" onclick="bookVia('call')">📞 Позвонить: +7 (909) 017-58-65</a>
     <button type="button" class="bs-opt" id="bsMax" onclick="bookVia('max')">💬 Написать в MAX</button>
     <button type="button" class="bs-opt" onclick="bookVia('tg')">✈️ Написать в Telegram</button>
-    <button type="button" class="bs-opt" onclick="closeBook(); openCallback()">📝 Оставить номер — перезвоню</button>
+    <button type="button" class="bs-opt" onclick="closeBook(); openCallback()">📝 Оставить номер — перезвоним</button>
     <button type="button" class="bs-close" onclick="closeBook()">Отмена</button>
   </div>
 </div>
@@ -945,7 +945,7 @@ function bookVia(ch) {
 const KP_URL = 'https://dedmoroz96.ru/kp.php';
 /* Та же форма работает в двух режимах:
    'kp'   — «Получить КП для компании» (после отправки открывается PDF);
-   'call' — «Оставить номер — перезвоню» из окна бронирования. */
+   'call' — «Оставить номер — перезвоним» из окна бронирования. */
 let CF_MODE = 'kp';
 const CF_TEXT = {
   kp: {
@@ -957,11 +957,11 @@ const CF_TEXT = {
     fail: 'КП можно открыть по кнопке ниже. Контакт отправить не получилось — напишите, пожалуйста, в Telegram @marsssellin или позвоните +7 (909) 017-58-65.'
   },
   call: {
-    title: 'Перезвоню и всё расскажу',
-    sub: 'Оставьте имя и телефон — Владислав перезвонит, подтвердит свободную дату и ответит на вопросы. Ваш расчёт с сайта он увидит.',
+    title: 'Перезвоним и всё расскажем',
+    sub: 'Оставьте имя и телефон — наш менеджер свяжется с вами, подтвердит свободную дату и ответит на вопросы.',
     extra: 'Когда удобно позвонить (по желанию)', extraPh: 'например, после 18:00', extraAc: 'off',
     btn: '📞 Жду звонка',
-    done: 'Заявка у Владислава. Он перезвонит в ближайшее время (с 9 до 21 по Екатеринбургу).',
+    done: 'Спасибо, заявка принята! Наш менеджер скоро вам перезвонит.',
     fail: 'Заявку отправить не получилось. Позвоните, пожалуйста, +7 (909) 017-58-65 или напишите в Telegram @marsssellin.'
   }
 };
