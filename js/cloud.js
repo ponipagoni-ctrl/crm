@@ -239,6 +239,8 @@ const Cloud = (() => {
       const rows = [];
       snap.forEach(d => rows.push({ uid: d.id, ...d.data() }));
       rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      // пустые анкеты без email — следы анонимного входа, не сотрудники
+      for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].email) rows.splice(i, 1);
       document.getElementById('team-list').innerHTML = rows.map(u => `
         <div class="list-item" style="cursor:default">
           <div class="li-emoji">${u.approved ? '✅' : '⏳'}</div>
@@ -275,6 +277,9 @@ const Cloud = (() => {
 
       auth.onAuthStateChanged(async user => {
         if (!user) { showAuthScreen('login'); return; }
+        // Анонимный вход (остался от старой версии «Аниматор Про» на том же сайте)
+        // в CRM не пускаем: выходим и показываем форму входа, анкету не создаём.
+        if (user.isAnonymous || !user.email) { await auth.signOut(); return; }
         try {
           const uref = db.collection('users').doc(user.uid);
           let udoc = await uref.get();

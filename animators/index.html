@@ -524,9 +524,13 @@ function normOrder(o){ if(o.staffId&&!o.dmId&&!o.snId)o.dmId=o.staffId; return o
 async function initCloud(){
   try{
     await loadFbSdk();
-    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
-    await firebase.auth().signInAnonymously();
-    fdb=firebase.firestore();
+    // Отдельный экземпляр Firebase ('animators'): у него своё хранилище входа,
+    // поэтому анонимный вход приложения не затирает вход в CRM на том же сайте.
+    const fbApp=firebase.apps.find(a=>a.name==='animators')||firebase.initializeApp(FB_CONFIG,'animators');
+    const fAuth=fbApp.auth();
+    const restored=await new Promise(res=>{const un=fAuth.onAuthStateChanged(u=>{un();res(u)})});
+    if(!restored)await fAuth.signInAnonymously();
+    fdb=fbApp.firestore();
     CLOUD=true;
     fdb.collection('performers').onSnapshot(sn=>{cloudStaff=sn.docs.map(d=>({id:d.id,...d.data()}));reRender();},
       e=>console.warn('performers:',e.message));
