@@ -489,6 +489,10 @@ const FB_CONFIG={apiKey:"AIzaSyDPjkBJNawCeR_M1iDN8OD3v_fo3cRWu84",authDomain:"ma
 let D=null,CU=null,aFilter='all',pinBuf='',eOid=null,eSid=null,eKid=null;
 let CLOUD=false,fdb=null,cloudStaff=[],cloudOrders=[];
 const KN_KEY='animator_pro_kn';
+// Руководитель (вход по PIN администратора) тоже выезжает Дедом Морозом:
+// он всегда есть в списке исполнителей, и его можно назначить на заказ.
+const OWNER={id:'owner',name:'Влад',role:'dm',owner:true,perms:{}};
+function withOwner(list){list=list||[];return list.some(s=>s.id===OWNER.id)?list:[{...OWNER},...list];}
 
 const MG=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WD=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
@@ -559,20 +563,21 @@ function assignLabel(o){
 }
 function staffOpts(role,sel){
   return `<option value="">— не назначен —</option>`+
-    (D.staff||[]).filter(s=>s.role===role).map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${role==='dm'?'🎅':'❄️'} ${s.name}</option>`).join('');
+    (D.staff||[]).filter(s=>s.role===role).map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${role==='dm'?'🎅':'❄️'} ${s.name}${s.owner?' (я)':''}</option>`).join('');
 }
 
 // ── DATA ──
 function load(){
   if(CLOUD){
     const kn=loadKn();
-    D={adminPin:ADMIN_PIN,staff:cloudStaff,orders:cloudOrders,knowledge:kn.knowledge,deletedKnowledge:kn.deletedKnowledge};
+    D={adminPin:ADMIN_PIN,staff:withOwner(cloudStaff),orders:cloudOrders,knowledge:kn.knowledge,deletedKnowledge:kn.deletedKnowledge};
     return D;
   }
   const r=localStorage.getItem(KEY);
   if(!r){D=seed();return D}
   let d;
   try{d=JSON.parse(r)}catch(e){D=seed();return D}
+  d.staff=withOwner(d.staff);
   return mergeKnowledge(d);
 }
 function save(){ if(CLOUD){saveKn();return} localStorage.setItem(KEY,JSON.stringify(D)); }
@@ -861,6 +866,13 @@ function rStaffList(containerId){
   if(!D.staff.length){el.innerHTML=`<div class="empty"><div class="empty-ico">👥</div><div class="empty-t">Сотрудников нет</div></div>`;return}
   el.innerHTML=D.staff.map(s=>{
     const e=staffEarnings(s.id);
+    if(s.owner)return `<div class="sc" onclick="toast('👑 Это вы. Назначайте себя на заказы в поле «Дед Мороз»')">
+      <div class="av av-dm">🎅</div>
+      <div class="sc-info"><div class="sc-name">${s.name} (я)</div>
+        <div class="sc-role">Руководитель · Дед Мороз · ${e.count} зак.</div>
+      </div>
+      <span class="sc-pin">👑</span>
+    </div>`;
     const badges=[];
     if(s.perms){
       if(s.perms.addOrders)badges.push('➕ заказы');
@@ -884,8 +896,9 @@ function rStaffList(containerId){
 // ── RENDER: PAYROLL SUMMARY (admin, Сотрудники tab) ──
 function rPayrollSummary(){
   D=load();
-  const done=D.staff.reduce((a,s)=>a+staffEarnings(s.id).doneSum,0);
-  const up=D.staff.reduce((a,s)=>a+staffEarnings(s.id).upSum,0);
+  const team=D.staff.filter(s=>!s.owner);
+  const done=team.reduce((a,s)=>a+staffEarnings(s.id).doneSum,0);
+  const up=team.reduce((a,s)=>a+staffEarnings(s.id).upSum,0);
   ge('adm-payroll').innerHTML=`<div class="stats">
     <div class="stat"><div class="stat-n" style="font-size:20px">${done.toLocaleString()} ₽</div><div class="stat-l">Заработано (выполн.)</div></div>
     <div class="stat"><div class="stat-n" style="font-size:20px">${up.toLocaleString()} ₽</div><div class="stat-l">Ожидается</div></div>
@@ -1108,7 +1121,7 @@ function openAddStaff(){
   oMod('M-stf');
 }
 function openEditStaff(id){
-  D=load();eSid=id;const s=D.staff.find(x=>x.id===id);if(!s)return;
+  D=load();const s=D.staff.find(x=>x.id===id);if(!s||s.owner)return;eSid=id;
   ge('stf-mtitle').textContent='Редактировать сотрудника';
   ge('f-sid').value=s.id;ge('f-sname').value=s.name;ge('f-srole').value=s.role;ge('f-spin').value=s.pin;
   const p=s.perms||{};
