@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /consent.html
+Disallow: /kp-consent.html
+
+Sitemap: https://dedmoroz96.ru/sitemap.xml
