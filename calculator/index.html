@@ -803,7 +803,10 @@ const MAX_LINK = 'https://max.ru/u/f9LHodD0cOKdVo8GiP-J0FlJX01SPWoygkFnaPHC16w4f
 const UTM_NAMES = { yandex: 'Яндекс', avito: 'Авито', vk: 'ВКонтакте', tv: 'ТВ-конкурс', tg: 'Telegram' };
 const FROM = (() => {
   try {
-    const u = new URLSearchParams(location.search).get('utm_source');
+    const q = new URLSearchParams(location.search);
+    // yclid Директ добавляет к каждому клику сам — так визит засчитается Яндексу,
+    // даже если в ссылке объявления потерялась метка utm_source
+    const u = q.get('utm_source') || (q.get('yclid') ? 'yandex' : '');
     if (u) sessionStorage.setItem('utm_source', u);
     return UTM_NAMES[u || sessionStorage.getItem('utm_source')] || '';
   } catch (e) { return ''; }
